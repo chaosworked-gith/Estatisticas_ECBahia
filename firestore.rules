@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Quem edita: contas do Google cadastradas em administradores, com o e-mail como ID do documento.
+    function administrador() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/administradores/$(request.auth.token.email.lower()));
+    }
+
+    // Cada pessoa só lê o próprio cadastro. Ninguém grava por aqui: o cadastro é feito no console.
+    match /administradores/{email} {
+      allow read: if request.auth != null && request.auth.token.email.lower() == email;
+      allow write: if false;
+    }
+
+    // Jogos lançados à mão, um documento por temporada. Todo mundo lê, só quem tem cadastro grava.
+    match /temporadas/{ano} {
+      allow read: if true;
+      allow delete: if administrador();
+      allow create, update: if administrador()
+        && ano.matches('^[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['temporada', 'jogos'])
+        && request.resource.data.temporada == int(ano)
+        && request.resource.data.jogos is list
+        && request.resource.data.jogos.size() <= 500;
+    }
+
+    // Lista das temporadas que têm jogos lançados à mão.
+    match /site/indice {
+      allow read: if true;
+      allow write: if administrador()
+        && request.resource.data.keys().hasOnly(['temporadas', 'ultima_atualizacao'])
+        && request.resource.data.temporadas is list;
+    }
+  }
+}

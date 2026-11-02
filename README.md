@@ -6,10 +6,11 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 
 ## Situação atual
 
-O site mostra o histórico de 1931 a 2025. A temporada 2026 ainda não está aqui, porque o plano gratuito da API-Football só libera de 2022 a 2024. Por isso, o agendamento do robô está desligado no workflow. O botão manual continua lá.
+O site mostra o histórico de 1931 a 2025. O plano gratuito da API-Football só libera de 2022 a 2024, então o agendamento do robô está desligado no workflow. O botão manual continua lá.
 
-Há dois caminhos para colocar os jogos de 2026:
+Há três caminhos para colocar os jogos de 2026:
 
+- **À mão:** pela página `adicionar.html`, depois de configurar o [Firebase](#firebase).
 - **Pelo Futebol 80:** quando a página publicar os jogos, rode de novo `node scripts/importar-historico.js`. Depois, atualize o período e o aviso de 2026 no rodapé do `index.html`.
 - **Pela API:** com um plano que libere a temporada, tire o comentário do agendamento em `.github/workflows/atualizar.yml` e use o botão **Run workflow**. Depois, volte a citar a API-Football no rodapé.
 
@@ -38,6 +39,10 @@ As etapas abaixo descrevem o projeto com o robô ligado. Sem ele, os dados vêm 
 │   ├── importar-historico.js    Importação do histórico, para rodar uma única vez
 │   └── *.test.js                Testes dos dois
 ├── .nojekyll              Faz o GitHub Pages publicar os arquivos como estão
+├── adicionar.html         Página para lançar jogos à mão
+├── firebase-config.js     Configuração pública do Firebase
+├── firebase.json          O que o Firebase publica
+├── firestore.rules        Quem pode ler e gravar no banco
 ├── index.html             O site
 └── README.md
 ```
@@ -89,7 +94,7 @@ Este jogo é só uma ilustração do formato, não é um resultado real.
 
 | Campo | Tipo | Descrição |
 | --- | --- | --- |
-| `id` | texto | Identificador único e estável. Jogo da API: `api-` mais o `id_api`. Jogo histórico: `f80-` mais data e times. |
+| `id` | texto | Identificador único e estável. Jogo da API: `api-` mais o `id_api`. Jogo histórico: `f80-` mais data e times. Jogo lançado à mão: `man-` mais data e adversário. |
 | `data` | texto | Data do jogo no formato `AAAA-MM-DD`. |
 | `hora` | texto ou `null` | Horário de Salvador no formato `HH:MM`. Pode ficar `null` em jogos antigos. |
 | `competicao` | texto | Nome da competição em português. |
@@ -102,8 +107,8 @@ Este jogo é só uma ilustração do formato, não é um resultado real.
 | `estadio` | texto ou `null` | Nome do estádio. Pode ficar `null` em jogos antigos. |
 | `cidade` | texto ou `null` | Cidade do jogo. Pode ficar `null` se a fonte não informar. |
 | `situacao` | texto | `agendado`, `ao_vivo`, `encerrado`, `adiado` ou `cancelado`. |
-| `fonte` | texto | De onde veio o jogo: `api-football` ou `futebol80`. |
-| `id_api` | número ou `null` | Número do jogo na API-Football. Fica `null` em jogos históricos. |
+| `fonte` | texto | De onde veio o jogo: `api-football`, `futebol80` ou `manual`. |
+| `id_api` | número ou `null` | Número do jogo na API-Football. Fica `null` em jogos históricos e nos lançados à mão. |
 | `atualizado_em` | texto | Data e hora da última alteração do jogo, com o fuso de Salvador. |
 
 ### O que não é salvo
@@ -211,3 +216,31 @@ Como a conta é feita:
 Para abrir direto uma temporada, acrescente `?temporada=2025` ao endereço.
 
 Para ver o site no computador, é preciso um servidor local. Abrindo o arquivo direto, o navegador bloqueia a leitura dos JSON e o site mostra uma mensagem de erro.
+
+## Firebase
+
+O Firebase hospeda o site e guarda os jogos lançados à mão. O histórico continua nos arquivos de `dados/`. Enquanto `firebase-config.js` estiver com `null`, o site funciona só com esses arquivos.
+
+Os jogos lançados à mão ficam no Firestore, no mesmo formato dos arquivos:
+
+| Onde | O que guarda | Quem lê | Quem grava |
+| --- | --- | --- | --- |
+| `temporadas/{ano}` | `temporada` e a lista `jogos` | Todo mundo | Administradores |
+| `site/indice` | `temporadas` e `ultima_atualizacao` | Todo mundo | Administradores |
+| `administradores/{e-mail}` | Contas que podem editar, com o e-mail como ID | A própria conta | Só pelo console do Firebase |
+
+Regras de funcionamento:
+
+- **Para quem só olha:** o site lê o banco pela API pública, sem carregar a biblioteca do Firebase e sem login. Se o banco falhar, o histórico continua aparecendo.
+- **Jogo repetido:** se o mesmo jogo aparecer nos arquivos e no banco (mesmo dia e mesmo adversário), vale o dos arquivos.
+- **Publicação:** `firebase.json` publica só `index.html`, `adicionar.html`, `firebase-config.js` e `dados/`. A linha `**/.*/**` da lista `ignore` é o que deixa a pasta `.git` de fora, porque a raiz do repositório é a pasta publicada. Não a remova.
+
+Para publicar, depois de entrar na conta com `npx firebase-tools login`:
+
+```bash
+npx firebase-tools deploy --project ID_DO_PROJETO
+```
+
+Jogo lançado à mão não precisa de publicação: ele aparece assim que é salvo. A publicação só é necessária quando muda alguma página ou algum arquivo de `dados/`.
+
+O plano gratuito do Firebase (Spark) não pede cartão e permite 360 MB de tráfego da hospedagem e 50 mil leituras do banco por dia. Cada visita faz até 2 leituras.

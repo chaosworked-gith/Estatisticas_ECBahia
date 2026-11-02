@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adicionar jogos | Estatísticas do Bahia</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0A3D8F">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A3D8F'/%3E%3Crect y='13' width='32' height='6' fill='%23fff'/%3E%3Crect y='19' width='32' height='6' fill='%23D8102B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --azul: #0A3D8F;
+    --azul-escuro: #072A63;
+    --azul-claro: #D6E4FA;
+    --vermelho: #D8102B;
+    --fundo: #F3F6FB;
+    --linha: #DCE4F0;
+    --borda-campo: #8A99B3;
+    --texto: #10213F;
+    --texto-2: #4A5A75;
+    --erro: #A50E26;
+    --erro-fundo: #FDE8EB;
+    --certo: #0B7A4B;
+    --certo-fundo: #E5F4EC;
+    --largura: 760px;
+    --raio: 12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--texto);
+    font-family: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+  }
+
+  :focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
+
+  .topo { background: var(--azul); color: #fff; }
+  .topo :focus-visible { outline-color: #fff; }
+  .topo__dentro { max-width: var(--largura); margin: 0 auto; padding: 20px 16px 18px; }
+  .topo__faixa { height: 10px; background: linear-gradient(#fff 0 40%, var(--vermelho) 40% 100%); }
+  .topo a { color: var(--azul-claro); font-size: 0.9375rem; }
+  h1 { margin: 4px 0 0; font-size: clamp(1.875rem, 8vw, 2.5rem); font-weight: 700; line-height: 1.1; }
+
+  main { display: grid; gap: 16px; max-width: var(--largura); margin: 0 auto; padding: 16px; }
+  main > * { min-width: 0; }
+
+  .cartao { background: #fff; border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px 12px; }
+  .cartao h2 { margin: 0 0 12px; color: var(--azul-escuro); font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+  .cartao p { margin: 0 0 12px; }
+  .cartao p:last-child { margin-bottom: 0; }
+
+  .botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .botao {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--azul);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .botao:disabled { opacity: 0.55; cursor: default; }
+  .botao--leve { background: var(--fundo); color: var(--azul-escuro); }
+
+  .campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .campo { display: grid; gap: 4px; min-width: 0; align-content: start; }
+  .campo--largo { grid-column: 1 / -1; }
+  .campo label { font-size: 0.9375rem; font-weight: 600; }
+  .campo small { color: var(--texto-2); font-size: 0.875rem; line-height: 1.25; }
+  .campo input, .campo select, .escolha select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid var(--borda-campo);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--texto);
+    font: inherit;
+    font-size: 1rem;
+  }
+
+  .aviso { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; }
+  .aviso--erro { background: var(--erro-fundo); color: var(--erro); }
+  .aviso--certo { background: var(--certo-fundo); color: var(--certo); }
+  .aviso ul { margin: 0; padding-left: 18px; }
+
+  .escolha { display: grid; gap: 4px; max-width: 12rem; margin-bottom: 12px; }
+  .escolha label { font-size: 0.9375rem; font-weight: 600; }
+
+  .lista { margin: 0 -12px; padding: 0; list-style: none; }
+  .lista li { display: grid; gap: 8px; padding: 12px; border-top: 1px solid var(--linha); }
+  .lista__jogo { font-weight: 600; }
+  .lista__detalhe { color: var(--texto-2); font-size: 0.9375rem; }
+  .vazio { color: var(--texto-2); }
+
+  @media (min-width: 720px) {
+    .topo__dentro { padding: 24px; }
+    main { padding: 24px; gap: 20px; }
+    .cartao { padding: 20px; }
+    .lista { margin: 0 -20px; }
+    .lista li { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 12px 20px; }
+  }
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="topo__dentro">
+    <a href="./">Voltar para o site</a>
+    <h1>Adicionar jogos</h1>
+  </div>
+  <div class="topo__faixa"></div>
+</header>
+
+<main>
+  <section class="cartao" aria-live="polite">
+    <p id="situacao">Carregando...</p>
+    <div class="botoes">
+      <button class="botao" id="entrar" type="button" hidden>Entrar com o Google</button>
+      <button class="botao botao--leve" id="sair" type="button" hidden>Sair</button>
+    </div>
+  </section>
+
+  <section class="cartao" id="cartao-formulario" hidden>
+    <h2 id="titulo-formulario">Novo jogo</h2>
+    <div id="resposta" aria-live="polite"></div>
+    <form id="formulario" novalidate>
+      <div class="campos">
+        <div class="campo">
+          <label for="data">Data</label>
+          <input id="data" type="date" required>
+        </div>
+        <div class="campo">
+          <label for="hora">Hora (opcional)</label>
+          <input id="hora" type="time">
+        </div>
+        <div class="campo campo--largo">
+          <label for="temporada">Temporada</label>
+          <input id="temporada" type="number" min="1900" max="2100" required>
+          <small>Vem do ano da data. Só mude se o campeonato terminou no ano seguinte.</small>
+        </div>
+        <div class="campo">
+          <label for="competicao">Competição</label>
+          <input id="competicao" list="competicoes" autocomplete="off" required>
+          <datalist id="competicoes">
+            <option value="Campeonato Baiano"></option>
+            <option value="Campeonato Brasileiro Série A"></option>
+            <option value="Campeonato Brasileiro Série B"></option>
+            <option value="Copa do Nordeste"></option>
+            <option value="Copa do Brasil"></option>
+            <option value="Copa Libertadores"></option>
+            <option value="Copa Sul-Americana"></option>
+            <option value="Amistoso"></option>
+          </datalist>
+        </div>
+        <div class="campo">
+          <label for="fase">Fase (opcional)</label>
+          <input id="fase" autocomplete="off" placeholder="3ª rodada">
+        </div>
+        <div class="campo campo--largo">
+          <label for="mando">Onde o Bahia jogou</label>
+          <select id="mando">
+            <option value="casa">Em casa ou campo neutro</option>
+            <option value="fora">Fora de casa</option>
+          </select>
+        </div>
+        <div class="campo campo--largo">
+          <label for="adversario">Adversário</label>
+          <input id="adversario" autocomplete="off" required>
+        </div>
+        <div class="campo campo--largo">
+          <label for="situacao-jogo">Situação</label>
+          <select id="situacao-jogo">
+            <option value="encerrado">Encerrado</option>
+            <option value="agendado">Agendado</option>
+            <option value="ao_vivo">Ao vivo</option>
+            <option value="adiado">Adiado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="gols-bahia">Gols do Bahia</label>
+          <input id="gols-bahia" type="number" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="campo">
+          <label for="gols-adversario">Gols do adversário</label>
+          <input id="gols-adversario" type="number" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="campo">
+          <label for="penaltis-bahia">Pênaltis do Bahia (se houve)</label>
+          <input id="penaltis-bahia" type="number" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="campo">
+          <label for="penaltis-adversario">Pênaltis do adversário (se houve)</label>
+          <input id="penaltis-adversario" type="number" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="campo">
+          <label for="estadio">Estádio (opcional)</label>
+          <input id="estadio" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="cidade">Cidade (opcional)</label>
+          <input id="cidade" autocomplete="off">
+        </div>
+      </div>
+      <div class="botoes">
+        <button class="botao" id="salvar" type="submit">Salvar jogo</button>
+        <button class="botao botao--leve" id="cancelar" type="button" hidden>Cancelar edição</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="cartao" id="cartao-lista" hidden>
+    <h2>Jogos lançados à mão</h2>
+    <div class="escolha" id="escolha-temporada" hidden>
+      <label for="temporada-lista">Temporada</label>
+      <select id="temporada-lista"></select>
+    </div>
+    <p class="vazio" id="lista-vazia">Nenhum jogo lançado à mão ainda.</p>
+    <ul class="lista" id="lista"></ul>
+  </section>
+</main>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+const SDK = 'https://www.gstatic.com/firebasejs/13.1.0';
+const NOME_BAHIA = 'Bahia';
+const FUSO = 'America/Bahia';
+const FONTE = 'manual';
+const RAIZ_TEMPORADAS = 'temporadas';
+
+const $ = (id) => document.getElementById(id);
+
+const campos = {
+  data: $('data'),
+  hora: $('hora'),
+  temporada: $('temporada'),
+  competicao: $('competicao'),
+  fase: $('fase'),
+  mando: $('mando'),
+  adversario: $('adversario'),
+  situacao: $('situacao-jogo'),
+  golsBahia: $('gols-bahia'),
+  golsAdversario: $('gols-adversario'),
+  penaltisBahia: $('penaltis-bahia'),
+  penaltisAdversario: $('penaltis-adversario'),
+  estadio: $('estadio'),
+  cidade: $('cidade'),
+};
+
+let firebase = null;
+let conta = null;
+let edicao = null;
+let temporadaFoiEscolhida = false;
+let temporadasManuais = [];
+const arquivosDasTemporadas = new Map();
+
+// Textos e números
+
+function normalizar(texto) {
+  return String(texto ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+}
+
+// Sem a sigla do estado que o Futebol 80 usa: "Palmeiras-SP" compara com "Palmeiras".
+function nomeParaComparar(nome) {
+  return normalizar(nome).replace(/-[a-z]{2,3}$/, '');
+}
+
+function adversarioDe(jogo) {
+  return jogo.mandante === NOME_BAHIA ? jogo.visitante : jogo.mandante;
+}
+
+function lerGols(texto) {
+  const limpo = String(texto ?? '').trim();
+  return limpo === '' ? null : Number(limpo);
+}
+
+const golsValidos = (valor) => valor === null || (Number.isInteger(valor) && valor >= 0);
+
+function carimbo(instante = new Date()) {
+  const partes = {};
+  const formato = new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'longOffset',
+  });
+  for (const { type, value } of formato.formatToParts(instante)) partes[type] = value;
+  const deslocamento = partes.timeZoneName.replace('GMT', '') || '+00:00';
+  return `${partes.year}-${partes.month}-${partes.day}T${partes.hour}:${partes.minute}:${partes.second}${deslocamento}`;
+}
+
+function formatarData(data) {
+  const [ano, mes, dia] = String(data).split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+function ordenarJogos(jogos) {
+  return [...jogos].sort((a, b) => `${a.data} ${a.hora ?? ''}`.localeCompare(`${b.data} ${b.hora ?? ''}`));
+}
+
+// Monta o jogo no formato do projeto e aponta o que precisa ser corrigido.
+function montarJogo(valores) {
+  const erros = [];
+  const adversario = valores.adversario.trim();
+  const competicao = valores.competicao.trim();
+  const temporada = Number(valores.temporada);
+  const golsBahia = lerGols(valores.golsBahia);
+  const golsAdversario = lerGols(valores.golsAdversario);
+  const penaltisBahia = lerGols(valores.penaltisBahia);
+  const penaltisAdversario = lerGols(valores.penaltisAdversario);
+  const temGols = golsBahia !== null && golsAdversario !== null;
+  const temPenaltis = penaltisBahia !== null && penaltisAdversario !== null;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valores.data)) erros.push('Preencha a data.');
+  if (!Number.isInteger(temporada) || temporada < 1900 || temporada > 2100) erros.push('A temporada precisa ser um ano com quatro dígitos.');
+  if (!competicao) erros.push('Preencha a competição.');
+  if (!adversario) erros.push('Preencha o adversário.');
+  if (normalizar(adversario) === normalizar(NOME_BAHIA)) erros.push('O adversário não pode ser o próprio Bahia.');
+  if (![golsBahia, golsAdversario, penaltisBahia, penaltisAdversario].every(golsValidos)) erros.push('Gols e pênaltis precisam ser números inteiros, sem sinal de menos.');
+  if ((golsBahia === null) !== (golsAdversario === null)) erros.push('Preencha os gols dos dois times, ou deixe os dois em branco.');
+  if ((penaltisBahia === null) !== (penaltisAdversario === null)) erros.push('Preencha os pênaltis dos dois times, ou deixe os dois em branco.');
+  if (valores.situacao === 'encerrado' && !temGols) erros.push('Jogo encerrado precisa ter o placar.');
+  if (valores.situacao === 'agendado' && (temGols || temPenaltis)) erros.push('Jogo agendado não tem placar. Deixe gols e pênaltis em branco.');
+  if (temPenaltis && (valores.situacao !== 'encerrado' || golsBahia !== golsAdversario)) erros.push('Pênaltis só valem em jogo encerrado e empatado.');
+  if (erros.length > 0) return { erros };
+
+  const fora = valores.mando === 'fora';
+  return {
+    erros,
+    temporada,
+    jogo: {
+      id: null,
+      data: valores.data,
+      hora: valores.hora || null,
+      competicao,
+      fase: valores.fase.trim() || null,
+      mandante: fora ? adversario : NOME_BAHIA,
+      visitante: fora ? NOME_BAHIA : adversario,
+      gols_mandante: fora ? golsAdversario : golsBahia,
+      gols_visitante: fora ? golsBahia : golsAdversario,
+      penaltis: temPenaltis
+        ? { mandante: fora ? penaltisAdversario : penaltisBahia, visitante: fora ? penaltisBahia : penaltisAdversario }
+        : null,
+      estadio: valores.estadio.trim() || null,
+      cidade: valores.cidade.trim() || null,
+      situacao: valores.situacao,
+      fonte: FONTE,
+      id_api: null,
+      atualizado_em: carimbo(),
+    },
+  };
+}
+
+function mesmoJogo(a, b) {
+  return a.data === b.data && nomeParaComparar(adversarioDe(a)) === nomeParaComparar(adversarioDe(b));
+}
+
+function criarId(jogo, existentes) {
+  const base = `man-${jogo.data}-${normalizar(adversarioDe(jogo)).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+  const usados = new Set(existentes.map((outro) => outro.id));
+  let id = base;
+  for (let n = 2; usados.has(id); n += 1) id = `${base}-${n}`;
+  return id;
+}
+
+// Telas
+
+function mostrarSituacao(texto) {
+  $('situacao').textContent = texto;
+}
+
+function mostrarResposta(tipo, conteudo) {
+  const caixa = document.createElement('div');
+  caixa.className = `aviso aviso--${tipo}`;
+  if (Array.isArray(conteudo)) {
+    const lista = document.createElement('ul');
+    for (const item of conteudo) {
+      const linha = document.createElement('li');
+      linha.textContent = item;
+      lista.append(linha);
+    }
+    caixa.append(lista);
+  } else {
+    caixa.textContent = conteudo;
+  }
+  $('resposta').replaceChildren(caixa);
+}
+
+function limparResposta() {
+  $('resposta').replaceChildren();
+}
+
+function lerFormulario() {
+  return Object.fromEntries(Object.entries(campos).map(([nome, campo]) => [nome, campo.value]));
+}
+
+// Depois de salvar, mantém o que costuma se repetir, para lançar vários jogos em sequência.
+function limparFormulario() {
+  const { temporada, competicao } = lerFormulario();
+  $('formulario').reset();
+  campos.temporada.value = temporada;
+  campos.competicao.value = competicao;
+  temporadaFoiEscolhida = false;
+  edicao = null;
+  $('titulo-formulario').textContent = 'Novo jogo';
+  $('salvar').textContent = 'Salvar jogo';
+  $('cancelar').hidden = true;
+}
+
+function preencherFormulario(jogo, temporada) {
+  const fora = jogo.visitante === NOME_BAHIA;
+  const penaltis = jogo.penaltis;
+  const valores = {
+    data: jogo.data,
+    hora: jogo.hora ?? '',
+    temporada,
+    competicao: jogo.competicao ?? '',
+    fase: jogo.fase ?? '',
+    mando: fora ? 'fora' : 'casa',
+    adversario: adversarioDe(jogo),
+    situacao: jogo.situacao,
+    golsBahia: (fora ? jogo.gols_visitante : jogo.gols_mandante) ?? '',
+    golsAdversario: (fora ? jogo.gols_mandante : jogo.gols_visitante) ?? '',
+    penaltisBahia: penaltis ? (fora ? penaltis.visitante : penaltis.mandante) : '',
+    penaltisAdversario: penaltis ? (fora ? penaltis.mandante : penaltis.visitante) : '',
+    estadio: jogo.estadio ?? '',
+    cidade: jogo.cidade ?? '',
+  };
+  for (const [nome, valor] of Object.entries(valores)) campos[nome].value = valor;
+  temporadaFoiEscolhida = true;
+  edicao = { id: jogo.id, temporada };
+  $('titulo-formulario').textContent = 'Editar jogo';
+  $('salvar').textContent = 'Salvar alterações';
+  $('cancelar').hidden = false;
+  limparResposta();
+  $('cartao-formulario').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function textoDoPlacar(jogo) {
+  const temGols = Number.isInteger(jogo.gols_mandante) && Number.isInteger(jogo.gols_visitante);
+  return `${jogo.mandante} ${temGols ? `${jogo.gols_mandante} x ${jogo.gols_visitante}` : 'x'} ${jogo.visitante}`;
+}
+
+const NOMES_DAS_SITUACOES = {
+  encerrado: 'Encerrado',
+  agendado: 'Agendado',
+  ao_vivo: 'Ao vivo',
+  adiado: 'Adiado',
+  cancelado: 'Cancelado',
+};
+
+function criarLinhaDaLista(jogo, temporada) {
+  const linha = document.createElement('li');
+
+  const texto = document.createElement('div');
+  const placar = document.createElement('div');
+  placar.className = 'lista__jogo';
+  placar.textContent = textoDoPlacar(jogo);
+  const detalhe = document.createElement('div');
+  detalhe.className = 'lista__detalhe';
+  detalhe.textContent = [formatarData(jogo.data), jogo.hora, jogo.competicao, NOMES_DAS_SITUACOES[jogo.situacao]].filter(Boolean).join(', ');
+  texto.append(placar, detalhe);
+
+  const botoes = document.createElement('div');
+  botoes.className = 'botoes';
+  const editar = document.createElement('button');
+  editar.type = 'button';
+  editar.className = 'botao botao--leve';
+  editar.textContent = 'Editar';
+  editar.addEventListener('click', () => preencherFormulario(jogo, temporada));
+  const apagar = document.createElement('button');
+  apagar.type = 'button';
+  apagar.className = 'botao botao--leve';
+  apagar.textContent = 'Apagar';
+  apagar.addEventListener('click', () => apagarJogo(jogo, temporada));
+  botoes.append(editar, apagar);
+
+  linha.append(texto, botoes);
+  return linha;
+}
+
+// Dados
+
+async function lerDocumento(...caminho) {
+  const { doc, getDoc } = firebase.firestore;
+  const documento = await getDoc(doc(firebase.db, ...caminho));
+  return documento.exists() ? documento.data() : null;
+}
+
+// Jogos que já estão nos arquivos do site, para avisar antes de lançar o mesmo jogo duas vezes.
+async function jogosDoArquivo(temporada) {
+  if (arquivosDasTemporadas.has(temporada)) return arquivosDasTemporadas.get(temporada);
+  let jogos = [];
+  try {
+    const resposta = await fetch(`dados/jogos/${temporada}.json`, { cache: 'no-cache' });
+    if (resposta.ok) jogos = (await resposta.json()).jogos ?? [];
+  } catch (erro) {
+    console.error(erro);
+    return [];
+  }
+  arquivosDasTemporadas.set(temporada, jogos);
+  return jogos;
+}
+
+async function atualizarLista(temporadaPreferida) {
+  const indice = await lerDocumento('site', 'indice');
+  temporadasManuais = indice?.temporadas ?? [];
+
+  const seletor = $('temporada-lista');
+  const atual = temporadaPreferida ?? Number(seletor.value);
+  seletor.replaceChildren(...temporadasManuais.map((ano) => {
+    const opcao = document.createElement('option');
+    opcao.value = ano;
+    opcao.textContent = ano;
+    return opcao;
+  }));
+  $('escolha-temporada').hidden = temporadasManuais.length === 0;
+  $('lista-vazia').hidden = temporadasManuais.length > 0;
+
+  if (temporadasManuais.length === 0) {
+    $('lista').replaceChildren();
+    return;
+  }
+  const temporada = temporadasManuais.includes(atual) ? atual : temporadasManuais[0];
+  seletor.value = temporada;
+  const dados = await lerDocumento(RAIZ_TEMPORADAS, String(temporada));
+  $('lista').replaceChildren(...ordenarJogos(dados?.jogos ?? []).map((jogo) => criarLinhaDaLista(jogo, temporada)));
+}
+
+// Grava tudo de uma vez: ou a temporada e a lista de temporadas mudam juntas, ou nada muda.
+async function gravar({ removerDe = null, removerId = null, adicionarEm = null, jogo = null }) {
+  const { doc, runTransaction } = firebase.firestore;
+  const { db } = firebase;
+  await runTransaction(db, async (transacao) => {
+    const anos = [...new Set([removerDe, adicionarEm].filter((ano) => ano !== null))];
+    const referencias = new Map(anos.map((ano) => [ano, doc(db, RAIZ_TEMPORADAS, String(ano))]));
+    const referenciaIndice = doc(db, 'site', 'indice');
+
+    const jogos = new Map();
+    for (const [ano, referencia] of referencias) {
+      const documento = await transacao.get(referencia);
+      jogos.set(ano, documento.exists() ? documento.data().jogos : []);
+    }
+    const documentoIndice = await transacao.get(referenciaIndice);
+    const lista = new Set(documentoIndice.exists() ? documentoIndice.data().temporadas : []);
+
+    if (removerDe !== null) jogos.set(removerDe, jogos.get(removerDe).filter((outro) => outro.id !== removerId));
+    if (adicionarEm !== null) {
+      const atuais = jogos.get(adicionarEm);
+      if (atuais.some((outro) => mesmoJogo(outro, jogo))) {
+        throw new Error('jogo-repetido');
+      }
+      jogos.set(adicionarEm, ordenarJogos([...atuais, { ...jogo, id: jogo.id ?? criarId(jogo, atuais) }]));
+    }
+
+    for (const [ano, jogosDoAno] of jogos) {
+      if (jogosDoAno.length > 0) {
+        transacao.set(referencias.get(ano), { temporada: ano, jogos: jogosDoAno });
+        lista.add(ano);
+      } else {
+        transacao.delete(referencias.get(ano));
+        lista.delete(ano);
+      }
+    }
+    transacao.set(referenciaIndice, {
+      temporadas: [...lista].sort((a, b) => b - a),
+      ultima_atualizacao: carimbo(),
+    });
+  });
+}
+
+function explicarErroAoGravar(erro) {
+  console.error(erro);
+  if (erro.message === 'jogo-repetido') return 'Esse jogo já foi lançado: mesmo dia e mesmo adversário.';
+  if (erro.code === 'permission-denied' || erro.code === 'firestore/permission-denied') return 'Sua conta não tem permissão para gravar.';
+  return 'Não deu para salvar. Confira a internet e tente de novo.';
+}
+
+async function salvarJogo(evento) {
+  evento.preventDefault();
+  limparResposta();
+
+  const { erros, jogo, temporada } = montarJogo(lerFormulario());
+  if (erros.length > 0) {
+    mostrarResposta('erro', erros);
+    return;
+  }
+
+  const repetidoNoArquivo = (await jogosDoArquivo(temporada)).some((outro) => mesmoJogo(outro, jogo));
+  if (repetidoNoArquivo) {
+    mostrarResposta('erro', `A temporada ${temporada} já tem esse jogo nos dados do site: mesmo dia e mesmo adversário.`);
+    return;
+  }
+
+  const botao = $('salvar');
+  botao.disabled = true;
+  try {
+    const estavaEditando = edicao !== null;
+    await gravar({
+      removerDe: edicao?.temporada ?? null,
+      removerId: edicao?.id ?? null,
+      adicionarEm: temporada,
+      jogo: { ...jogo, id: edicao?.id ?? null },
+    });
+    limparFormulario();
+    await atualizarLista(temporada);
+    mostrarResposta('certo', estavaEditando ? 'Alterações salvas.' : 'Jogo salvo. Já está no site.');
+  } catch (erro) {
+    mostrarResposta('erro', explicarErroAoGravar(erro));
+  } finally {
+    botao.disabled = false;
+  }
+}
+
+async function apagarJogo(jogo, temporada) {
+  if (!window.confirm(`Apagar este jogo?\n\n${textoDoPlacar(jogo)}\n${formatarData(jogo.data)}`)) return;
+  try {
+    await gravar({ removerDe: temporada, removerId: jogo.id });
+    if (edicao?.id === jogo.id) limparFormulario();
+    await atualizarLista(temporada);
+    mostrarResposta('certo', 'Jogo apagado.');
+  } catch (erro) {
+    mostrarResposta('erro', explicarErroAoGravar(erro));
+  }
+}
+
+// Conta
+
+async function tratarConta(usuario) {
+  conta = usuario;
+  $('cartao-formulario').hidden = true;
+  $('cartao-lista').hidden = true;
+
+  if (!usuario) {
+    mostrarSituacao('Entre com a sua conta do Google para adicionar jogos.');
+    $('entrar').hidden = false;
+    $('sair').hidden = true;
+    return;
+  }
+
+  $('entrar').hidden = true;
+  $('sair').hidden = false;
+  const email = usuario.email?.toLowerCase() ?? '';
+
+  let autorizada = false;
+  try {
+    autorizada = (await lerDocumento('administradores', email)) !== null;
+  } catch (erro) {
+    console.error(erro);
+    mostrarSituacao('Não deu para conferir a sua permissão. Recarregue a página e tente de novo.');
+    return;
+  }
+
+  if (!autorizada) {
+    mostrarSituacao(`A conta ${email} ainda não tem permissão para editar. Para liberar, crie no Firestore, na coleção administradores, um documento com esse e-mail como ID.`);
+    return;
+  }
+
+  mostrarSituacao(`Conectado como ${email}.`);
+  $('cartao-formulario').hidden = false;
+  $('cartao-lista').hidden = false;
+  try {
+    await atualizarLista();
+  } catch (erro) {
+    console.error(erro);
+    mostrarResposta('erro', 'Não deu para carregar os jogos já lançados. Recarregue a página.');
+  }
+}
+
+async function entrar() {
+  const { signInWithPopup, signInWithRedirect, GoogleAuthProvider } = firebase.auth;
+  const provedor = new GoogleAuthProvider();
+  try {
+    await signInWithPopup(firebase.authentication, provedor);
+  } catch (erro) {
+    if (erro.code === 'auth/popup-closed-by-user' || erro.code === 'auth/cancelled-popup-request') return;
+    if (erro.code === 'auth/popup-blocked') {
+      await signInWithRedirect(firebase.authentication, provedor);
+      return;
+    }
+    console.error(erro);
+    mostrarSituacao('Não deu para entrar com o Google. Tente de novo.');
+  }
+}
+
+async function iniciar() {
+  const config = window.CONFIG_FIREBASE;
+  if (!config?.projectId) {
+    mostrarSituacao('O Firebase ainda não foi configurado neste site. Por isso, ainda não dá para adicionar jogos por aqui.');
+    return;
+  }
+
+  try {
+    const [app, auth, firestore] = await Promise.all([
+      import(`${SDK}/firebase-app.js`),
+      import(`${SDK}/firebase-auth.js`),
+      import(`${SDK}/firebase-firestore.js`),
+    ]);
+    const aplicativo = app.initializeApp(config);
+    firebase = {
+      auth,
+      firestore,
+      authentication: auth.getAuth(aplicativo),
+      db: firestore.getFirestore(aplicativo),
+    };
+  } catch (erro) {
+    console.error(erro);
+    mostrarSituacao('Não deu para carregar o Firebase. Confira a internet e recarregue a página.');
+    return;
+  }
+
+  $('entrar').addEventListener('click', entrar);
+  $('sair').addEventListener('click', () => firebase.auth.signOut(firebase.authentication));
+  $('formulario').addEventListener('submit', salvarJogo);
+  $('cancelar').addEventListener('click', () => {
+    limparFormulario();
+    limparResposta();
+  });
+  $('temporada-lista').addEventListener('change', (evento) => atualizarLista(Number(evento.target.value)));
+  campos.temporada.addEventListener('input', () => {
+    temporadaFoiEscolhida = true;
+  });
+  campos.data.addEventListener('change', () => {
+    if (!temporadaFoiEscolhida && campos.data.value) campos.temporada.value = campos.data.value.slice(0, 4);
+  });
+
+  firebase.auth.onAuthStateChanged(firebase.authentication, tratarConta);
+}
+
+iniciar();
+</script>
+</body>
+</html>

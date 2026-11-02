@@ -294,10 +294,12 @@
     <p>Os horários são de Salvador. A conta só usa jogos encerrados.</p>
     <p>Aproveitamento: 3 pontos por vitória e 1 por empate. Disputa de pênaltis conta como empate.</p>
     <p>Fonte dos dados históricos, de 1931 a 2025: <a href="https://www.futebol80.com.br/links/times/bahia/bahiajg.htm">Futebol 80</a>.</p>
-    <p>Os jogos de 2026 entram depois de publicados pelo Futebol 80.</p>
+    <p>Os jogos de 2026 entram aos poucos, lançados à mão.</p>
+    <p><a href="adicionar.html">Área de edição</a></p>
   </div>
 </footer>
 
+<script src="firebase-config.js"></script>
 <script>
 'use strict';
 
@@ -323,6 +325,8 @@ const campoTemporada = document.getElementById('temporada');
 const atualizado = document.getElementById('atualizado');
 
 const temporadasCarregadas = new Map();
+let temporadasEmArquivo = new Set();
+let temporadasManuais = new Set();
 let pedidoAtual = 0;
 
 // Monta um elemento. Os textos entram como texto puro, nunca como HTML.
@@ -646,10 +650,14 @@ function criarTodosOsJogos(jogos, temporada) {
 
 // Telas
 
-function desenharTemporada(temporada, jogos) {
+function desenharTemporada(temporada, jogos, faltaramManuais) {
   const ordenados = [...jogos].sort(compararPorData);
   document.title = `Temporada ${temporada} | Estatísticas do Bahia`;
+  const aviso = faltaramManuais
+    ? el('p', { class: 'mensagem' }, 'Os jogos lançados à mão não carregaram agora. Recarregue a página em instantes.')
+    : '';
   conteudo.replaceChildren(
+    aviso,
     criarResumo(temporada, calcularNumeros(ordenados)),
     criarProximosEUltimos(ordenados, temporada),
     criarCompeticoes(ordenados),
@@ -675,12 +683,82 @@ async function buscarJson(caminho) {
   return resposta.json();
 }
 
-async function buscarTemporada(temporada) {
-  if (temporadasCarregadas.has(temporada)) return temporadasCarregadas.get(temporada);
+// O Firestore entrega cada valor com o tipo junto, como { integerValue: "2" }.
+function lerValorFirestore(valor) {
+  if ('mapValue' in valor) {
+    const campos = Object.entries(valor.mapValue.fields ?? {});
+    return Object.fromEntries(campos.map(([nome, item]) => [nome, lerValorFirestore(item)]));
+  }
+  if ('arrayValue' in valor) return (valor.arrayValue.values ?? []).map(lerValorFirestore);
+  if ('integerValue' in valor) return Number(valor.integerValue);
+  if ('doubleValue' in valor) return valor.doubleValue;
+  if ('nullValue' in valor) return null;
+  return valor.stringValue ?? valor.booleanValue ?? valor.timestampValue ?? null;
+}
+
+// Os jogos lançados à mão ficam no Firestore. O site lê pela API pública, sem carregar a
+// biblioteca do Firebase, para continuar leve para quem só está olhando.
+async function buscarDocumentoManual(caminho) {
+  const projeto = window.CONFIG_FIREBASE?.projectId;
+  if (!projeto) return null;
+  const resposta = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${projeto}/databases/(default)/documents/${caminho}`,
+    { cache: 'no-cache', signal: AbortSignal.timeout(8000) },
+  );
+  if (resposta.status === 404) return null;
+  if (!resposta.ok) throw new Error(`${caminho}: ${resposta.status}`);
+  const { fields } = await resposta.json();
+  return lerValorFirestore({ mapValue: { fields } });
+}
+
+// Sem a sigla do estado que o Futebol 80 usa: "Palmeiras-SP" compara com "Palmeiras".
+function nomeParaComparar(nome) {
+  return String(nome ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .trim()
+    .replace(/-[a-z]{2,3}$/, '');
+}
+
+function adversarioDe(jogo) {
+  return jogo.mandante === NOME_BAHIA ? jogo.visitante : jogo.mandante;
+}
+
+// Se o mesmo jogo chegar depois pelos arquivos (Futebol 80 ou API), vale o arquivo.
+function juntarManuais(doArquivo, manuais) {
+  const repetido = (manual) => doArquivo.some((jogo) =>
+    jogo.data === manual.data && nomeParaComparar(adversarioDe(jogo)) === nomeParaComparar(adversarioDe(manual)));
+  return [...doArquivo, ...manuais.filter((manual) => !repetido(manual))];
+}
+
+async function buscarArquivoDaTemporada(temporada) {
   const dados = await buscarJson(`dados/jogos/${temporada}.json`);
   if (!Array.isArray(dados.jogos)) throw new Error(`${temporada}: lista de jogos ausente`);
-  temporadasCarregadas.set(temporada, dados.jogos);
   return dados.jogos;
+}
+
+async function buscarTemporada(temporada) {
+  if (temporadasCarregadas.has(temporada)) return temporadasCarregadas.get(temporada);
+  const temArquivo = temporadasEmArquivo.has(temporada);
+  const doArquivo = temArquivo ? await buscarArquivoDaTemporada(temporada) : [];
+
+  let manuais = [];
+  let faltaramManuais = false;
+  if (temporadasManuais.has(temporada)) {
+    try {
+      manuais = (await buscarDocumentoManual(`temporadas/${temporada}`))?.jogos ?? [];
+    } catch (erro) {
+      // Temporada só com jogos manuais fica sem nada para mostrar: vira a mensagem de erro.
+      if (!temArquivo) throw erro;
+      console.error(erro);
+      faltaramManuais = true;
+    }
+  }
+
+  const resultado = { jogos: juntarManuais(doArquivo, manuais), faltaramManuais };
+  if (!faltaramManuais) temporadasCarregadas.set(temporada, resultado);
+  return resultado;
 }
 
 async function mostrarTemporada(temporada) {
@@ -688,8 +766,8 @@ async function mostrarTemporada(temporada) {
   const pedido = ++pedidoAtual;
   conteudo.classList.add('carregando');
   try {
-    const jogos = await buscarTemporada(temporada);
-    if (pedido === pedidoAtual) desenharTemporada(temporada, jogos);
+    const { jogos, faltaramManuais } = await buscarTemporada(temporada);
+    if (pedido === pedidoAtual) desenharTemporada(temporada, jogos, faltaramManuais);
   } catch (erro) {
     console.error(erro);
     if (pedido === pedidoAtual) {
@@ -705,10 +783,23 @@ function escolherTemporadaInicial(temporadas) {
   return temporadas.includes(pedida) ? pedida : temporadas[0];
 }
 
+function maisRecente(...datas) {
+  const validas = datas.filter((data) => data && !Number.isNaN(new Date(data).getTime()));
+  return validas.sort((a, b) => new Date(b) - new Date(a))[0] ?? datas[0];
+}
+
 async function iniciar() {
   let indice;
+  let indiceManual;
   try {
-    indice = await buscarJson('dados/indice.json');
+    [indice, indiceManual] = await Promise.all([
+      buscarJson('dados/indice.json'),
+      // A base manual é um extra: se falhar, o site segue com os arquivos.
+      buscarDocumentoManual('site/indice').catch((erro) => {
+        console.error(erro);
+        return null;
+      }),
+    ]);
   } catch (erro) {
     console.error(erro);
     atualizado.textContent = 'Sem conexão com os dados';
@@ -716,9 +807,11 @@ async function iniciar() {
     return;
   }
 
-  atualizado.textContent = formatarAtualizacao(indice.ultima_atualizacao);
+  atualizado.textContent = formatarAtualizacao(maisRecente(indice.ultima_atualizacao, indiceManual?.ultima_atualizacao));
 
-  const temporadas = Array.isArray(indice.temporadas) ? indice.temporadas : [];
+  temporadasEmArquivo = new Set(Array.isArray(indice.temporadas) ? indice.temporadas : []);
+  temporadasManuais = new Set(Array.isArray(indiceManual?.temporadas) ? indiceManual.temporadas : []);
+  const temporadas = [...new Set([...temporadasEmArquivo, ...temporadasManuais])].sort((a, b) => b - a);
   if (temporadas.length === 0) {
     desenharAviso('Os jogos ainda não chegaram. Assim que o robô rodar, os números aparecem aqui.');
     return;
