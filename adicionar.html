@@ -333,7 +333,8 @@ function montarJogo(valores) {
   if ((penaltisBahia === null) !== (penaltisAdversario === null)) erros.push('Preencha os pênaltis dos dois times, ou deixe os dois em branco.');
   if (valores.situacao === 'encerrado' && !temGols) erros.push('Jogo encerrado precisa ter o placar.');
   if (valores.situacao === 'agendado' && (temGols || temPenaltis)) erros.push('Jogo agendado não tem placar. Deixe gols e pênaltis em branco.');
-  if (temPenaltis && (valores.situacao !== 'encerrado' || golsBahia !== golsAdversario)) erros.push('Pênaltis só valem em jogo encerrado e empatado.');
+  // No jogo de volta, pode haver pênaltis mesmo sem empate no placar: o empate é na soma dos dois jogos.
+  if (temPenaltis && valores.situacao !== 'encerrado') erros.push('Pênaltis só valem em jogo encerrado.');
   if (erros.length > 0) return { erros };
 
   const fora = valores.mando === 'fora';

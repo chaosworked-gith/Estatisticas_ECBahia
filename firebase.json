@@ -3,6 +3,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "predeploy": ["node scripts/gerar-historia.js"],
     "public": ".",
     "ignore": [
       "firebase.json",

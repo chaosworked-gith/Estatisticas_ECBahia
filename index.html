@@ -213,6 +213,7 @@
   .tabela [role="rowheader"] { font-weight: 600; text-align: left; }
   .tabela tfoot > tr > * { border-top: 2px solid var(--linha); font-weight: 700; }
   .tabela abbr { text-decoration: none; }
+  .tabela a { color: var(--azul); }
 
   .legenda { margin: 12px 0 0; color: var(--texto-2); font-size: 0.875rem; }
 
@@ -228,11 +229,14 @@
   /* Tabela no celular: nome em cima e números embaixo, para caber sem rolagem. */
   @media (max-width: 719px) {
     .tabela, .tabela thead, .tabela tbody, .tabela tfoot { display: block; }
+    .tabela { font-size: clamp(0.75rem, 3.6vw, 0.9375rem); }
     .tabela tr {
       display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.4fr);
+      grid-template-columns: repeat(6, minmax(0, 1fr)) repeat(2, minmax(0, 1.25fr));
       padding: 6px 0;
     }
+    .tabela td { white-space: nowrap; }
+    .tabela [role="rowheader"] { font-size: 1.0625rem; }
     .tabela tbody tr + tr > *, .tabela tfoot > tr > * { border-top: 0; }
     .tabela tbody tr + tr, .tabela tfoot > tr { border-top: 1px solid var(--linha); }
     .tabela tfoot > tr { border-top-width: 2px; }
@@ -241,6 +245,12 @@
     .tabela thead th:first-child { display: none; }
     .tabela [role="rowheader"] { grid-column: 1 / -1; text-align: left; }
     .tabela thead tr { border-bottom: 1px solid var(--linha); }
+  }
+
+  /* Em tela estreita, os quatro quadros viram dois por linha, para caber número como 2.822. */
+  @media (max-width: 419px) {
+    .numeros--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .numero dd { font-size: 1.5rem; }
   }
 
   @media (min-width: 720px) {
@@ -292,9 +302,9 @@
   <div class="rodape__dentro">
     <p class="rodape__grito">Bora, Bahêa!</p>
     <p>Os horários são de Salvador. A conta só usa jogos encerrados.</p>
-    <p>Aproveitamento: 3 pontos por vitória e 1 por empate. Disputa de pênaltis conta como empate.</p>
+    <p>Aproveitamento: 3 pontos por vitória e 1 por empate. Disputa de pênaltis não muda o resultado: vale o placar do jogo.</p>
     <p>Fonte dos dados históricos, de 1931 a 2025: <a href="https://www.futebol80.com.br/links/times/bahia/bahiajg.htm">Futebol 80</a>.</p>
-    <p>Os jogos de 2026 entram aos poucos, lançados à mão.</p>
+    <p>Fonte dos jogos de 2026: <a href="https://en.wikipedia.org/wiki/2026_Esporte_Clube_Bahia_season">Wikipédia</a> e lançamentos à mão.</p>
     <p><a href="adicionar.html">Área de edição</a></p>
   </div>
 </footer>
@@ -306,6 +316,7 @@
 const NOME_BAHIA = 'Bahia';
 const FUSO = 'America/Bahia';
 const JOGOS_POR_LISTA = 5;
+const VISAO_HISTORIA = 'historia';
 
 const RESULTADOS = {
   vitoria: 'Vitória',
@@ -327,6 +338,7 @@ const atualizado = document.getElementById('atualizado');
 const temporadasCarregadas = new Map();
 let temporadasEmArquivo = new Set();
 let temporadasManuais = new Set();
+let historiaCarregada = null;
 let pedidoAtual = 0;
 
 // Monta um elemento. Os textos entram como texto puro, nunca como HTML.
@@ -427,6 +439,10 @@ function calcularNumeros(jogos) {
   return numeros;
 }
 
+function formatarNumero(numero) {
+  return new Intl.NumberFormat('pt-BR').format(numero);
+}
+
 function formatarSaldo(saldo) {
   return new Intl.NumberFormat('pt-BR', { signDisplay: 'exceptZero' }).format(saldo);
 }
@@ -454,29 +470,30 @@ function criarBarra(numeros) {
   return barra;
 }
 
-function criarResumo(temporada, numeros) {
+function criarResumo(titulo, numeros, nota = null) {
   const heroi = numeros.jogos > 0
     ? el('div', {},
         el('p', { class: 'heroi__numero' }, formatarAproveitamento(numeros.aproveitamento)),
         el('p', { class: 'heroi__rotulo' }, 'de aproveitamento'),
-        el('p', { class: 'heroi__detalhe' }, `${numeros.pontos} de ${numeros.pontosPossiveis} pontos`),
+        el('p', { class: 'heroi__detalhe' }, `${formatarNumero(numeros.pontos)} de ${formatarNumero(numeros.pontosPossiveis)} pontos`),
         criarBarra(numeros))
     : el('div', {}, el('p', { class: 'heroi__rotulo' }, 'A bola ainda não rolou nesta temporada.'));
 
   return el('section', { class: 'cartao', 'aria-labelledby': 'titulo-resumo' },
-    el('h2', { id: 'titulo-resumo' }, `Resumo de ${temporada}`),
+    el('h2', { id: 'titulo-resumo' }, titulo),
     el('div', { class: 'resumo' },
       heroi,
       el('div', { class: 'resumo__numeros' },
         el('dl', { class: 'numeros numeros--4' },
-          criarNumero('Jogos', numeros.jogos),
-          criarNumero('Vitórias', numeros.vitoria, 'vitoria'),
-          criarNumero('Empates', numeros.empate, 'empate'),
-          criarNumero('Derrotas', numeros.derrota, 'derrota')),
+          criarNumero('Jogos', formatarNumero(numeros.jogos)),
+          criarNumero('Vitórias', formatarNumero(numeros.vitoria), 'vitoria'),
+          criarNumero('Empates', formatarNumero(numeros.empate), 'empate'),
+          criarNumero('Derrotas', formatarNumero(numeros.derrota), 'derrota')),
         el('dl', { class: 'numeros numeros--3' },
-          criarNumero('Gols pró', numeros.golsPro),
-          criarNumero('Gols contra', numeros.golsContra),
-          criarNumero('Saldo', formatarSaldo(numeros.saldo))))));
+          criarNumero('Gols pró', formatarNumero(numeros.golsPro)),
+          criarNumero('Gols contra', formatarNumero(numeros.golsContra)),
+          criarNumero('Saldo', formatarSaldo(numeros.saldo))))),
+    nota ? el('p', { class: 'legenda' }, nota) : null);
 }
 
 // Linhas de jogo
@@ -570,12 +587,12 @@ function criarProximosEUltimos(jogos, temporada) {
 // Tabela por competição
 
 const COLUNAS = [
-  ['J', 'Jogos', (n) => n.jogos],
-  ['V', 'Vitórias', (n) => n.vitoria],
-  ['E', 'Empates', (n) => n.empate],
-  ['D', 'Derrotas', (n) => n.derrota],
-  ['GP', 'Gols pró', (n) => n.golsPro],
-  ['GC', 'Gols contra', (n) => n.golsContra],
+  ['J', 'Jogos', (n) => formatarNumero(n.jogos)],
+  ['V', 'Vitórias', (n) => formatarNumero(n.vitoria)],
+  ['E', 'Empates', (n) => formatarNumero(n.empate)],
+  ['D', 'Derrotas', (n) => formatarNumero(n.derrota)],
+  ['GP', 'Gols pró', (n) => formatarNumero(n.golsPro)],
+  ['GC', 'Gols contra', (n) => formatarNumero(n.golsContra)],
   ['SG', 'Saldo de gols', (n) => formatarSaldo(n.saldo)],
   ['%', 'Aproveitamento', (n) => formatarAproveitamento(n.aproveitamento)],
 ];
@@ -586,10 +603,10 @@ function criarLinhaDaTabela(nome, numeros) {
     ...COLUNAS.map(([, , valor]) => el('td', { role: 'cell' }, valor(numeros))));
 }
 
-function criarCompeticoes(jogos) {
+function criarCompeticoes(jogos, agrupar = (nome) => nome) {
   const porCompeticao = new Map();
   for (const jogo of jogos) {
-    const nome = jogo.competicao || 'Competição não informada';
+    const nome = agrupar(jogo.competicao || 'Competição não informada');
     if (!porCompeticao.has(nome)) porCompeticao.set(nome, []);
     porCompeticao.get(nome).push(jogo);
   }
@@ -648,6 +665,56 @@ function criarTodosOsJogos(jogos, temporada) {
   return secao;
 }
 
+// Toda a história
+
+// O Brasileiro já teve muitos nomes. Na história inteira, o que importa é a divisão.
+function grupoDaCompeticao(nome) {
+  if (nome === 'Campeonato Brasileiro Série B' || nome.startsWith('Campeonato Brasileiro (2ª')) return 'Campeonato Brasileiro, 2ª divisão';
+  if (nome === 'Campeonato Brasileiro Série C') return 'Campeonato Brasileiro, 3ª divisão';
+  if (nome === 'Campeonato Brasileiro Série A' || nome.startsWith('Campeonato Brasileiro (')) return 'Campeonato Brasileiro, 1ª divisão';
+  if (nome === 'Amistoso') return 'Amistosos';
+  if (nome !== 'Torneio Início do Baiano' && (nome.startsWith('Torneio') || nome === 'Copa SERBA')) return 'Outros torneios';
+  return nome;
+}
+
+function criarPorTemporada(jogos) {
+  const porTemporada = new Map();
+  for (const jogo of jogos) {
+    if (!porTemporada.has(jogo.temporada)) porTemporada.set(jogo.temporada, []);
+    porTemporada.get(jogo.temporada).push(jogo);
+  }
+  const linhas = [...porTemporada].sort(([a], [b]) => a - b).map(([temporada, jogosDoAno]) =>
+    criarLinhaDaTabela(el('a', { href: `?temporada=${temporada}` }, temporada), calcularNumeros(jogosDoAno)));
+
+  return el('section', { class: 'cartao', 'aria-labelledby': 'titulo-por-temporada' },
+    el('h2', { id: 'titulo-por-temporada' }, 'Temporada a temporada'),
+    el('table', { class: 'tabela', role: 'table' },
+      el('thead', { role: 'rowgroup' },
+        el('tr', { role: 'row' },
+          el('th', { role: 'columnheader', scope: 'col' }, 'Temporada'),
+          ...COLUNAS.map(([sigla, nome]) =>
+            el('th', { role: 'columnheader', scope: 'col' }, el('abbr', { title: nome }, sigla))))),
+      el('tbody', { role: 'rowgroup' }, ...linhas)));
+}
+
+function desenharHistoria(jogos, faltaramManuais) {
+  if (jogos.length === 0) {
+    desenharAviso('Ainda não há temporadas encerradas para mostrar. Escolha uma temporada no seletor.');
+    return;
+  }
+  const anos = jogos.map((jogo) => jogo.temporada);
+  const titulo = `Resumo de ${Math.min(...anos)} a ${Math.max(...anos)}`;
+  const semPlacar = jogos.filter((jogo) => !Number.isInteger(jogo.gols_mandante) || !Number.isInteger(jogo.gols_visitante)).length;
+  const nota = semPlacar > 0 ? `Mais ${semPlacar} jogos sem placar, decididos por W.O., ficam fora da conta.` : null;
+
+  document.title = 'Toda a história | Estatísticas do Bahia';
+  conteudo.replaceChildren(
+    faltaramManuais ? el('p', { class: 'mensagem' }, 'Os jogos lançados à mão não carregaram agora. Recarregue a página em instantes.') : '',
+    criarResumo(titulo, calcularNumeros(jogos), nota),
+    criarCompeticoes(jogos, grupoDaCompeticao),
+    criarPorTemporada(jogos));
+}
+
 // Telas
 
 function desenharTemporada(temporada, jogos, faltaramManuais) {
@@ -658,7 +725,7 @@ function desenharTemporada(temporada, jogos, faltaramManuais) {
     : '';
   conteudo.replaceChildren(
     aviso,
-    criarResumo(temporada, calcularNumeros(ordenados)),
+    criarResumo(`Resumo de ${temporada}`, calcularNumeros(ordenados)),
     criarProximosEUltimos(ordenados, temporada),
     criarCompeticoes(ordenados),
     criarTodosOsJogos(ordenados, temporada));
@@ -778,9 +845,57 @@ async function mostrarTemporada(temporada) {
   }
 }
 
-function escolherTemporadaInicial(temporadas) {
+// Toda a história vale até a última temporada encerrada. A do ano atual ainda está mudando.
+async function buscarHistoria() {
+  if (historiaCarregada) return historiaCarregada;
+  const dados = await buscarJson('dados/historia.json');
+  const anoLimite = anoAtual();
+  const doArquivo = dados.jogos
+    .map((linha) => ({ ...Object.fromEntries(dados.colunas.map((coluna, i) => [coluna, linha[i]])), situacao: 'encerrado' }))
+    .filter((jogo) => jogo.temporada < anoLimite);
+
+  const anosManuais = [...temporadasManuais].filter((ano) => ano < anoLimite);
+  let faltaramManuais = false;
+  const manuais = await Promise.all(anosManuais.map(async (ano) => {
+    try {
+      const jogos = (await buscarDocumentoManual(`temporadas/${ano}`))?.jogos ?? [];
+      return jogos.filter((jogo) => jogo.situacao === 'encerrado').map((jogo) => ({ ...jogo, temporada: ano }));
+    } catch (erro) {
+      console.error(erro);
+      faltaramManuais = true;
+      return [];
+    }
+  }));
+
+  const resultado = { jogos: juntarManuais(doArquivo, manuais.flat()), faltaramManuais };
+  if (!faltaramManuais) historiaCarregada = resultado;
+  return resultado;
+}
+
+async function mostrarHistoria() {
+  const pedido = ++pedidoAtual;
+  conteudo.classList.add('carregando');
+  try {
+    const { jogos, faltaramManuais } = await buscarHistoria();
+    if (pedido === pedidoAtual) desenharHistoria(jogos, faltaramManuais);
+  } catch (erro) {
+    console.error(erro);
+    if (pedido === pedidoAtual) {
+      desenharErro('Não deu para carregar toda a história. Tente de novo em instantes.', mostrarHistoria);
+    }
+  } finally {
+    if (pedido === pedidoAtual) conteudo.classList.remove('carregando');
+  }
+}
+
+function mostrarVisao(visao) {
+  return visao === VISAO_HISTORIA ? mostrarHistoria() : mostrarTemporada(Number(visao));
+}
+
+// Sem pedido no endereço, o site abre em toda a história.
+function escolherVisaoInicial(temporadas) {
   const pedida = Number(new URLSearchParams(location.search).get('temporada'));
-  return temporadas.includes(pedida) ? pedida : temporadas[0];
+  return temporadas.includes(pedida) ? String(pedida) : VISAO_HISTORIA;
 }
 
 function maisRecente(...datas) {
@@ -817,19 +932,22 @@ async function iniciar() {
     return;
   }
 
-  campoTemporada.replaceChildren(...temporadas.map((ano) => el('option', { value: ano }, ano)));
-  const inicial = escolherTemporadaInicial(temporadas);
+  campoTemporada.replaceChildren(
+    el('option', { value: VISAO_HISTORIA }, 'Toda a história'),
+    ...temporadas.map((ano) => el('option', { value: ano }, ano)));
+  const inicial = escolherVisaoInicial(temporadas);
   campoTemporada.value = inicial;
   seletor.hidden = false;
-  await mostrarTemporada(inicial);
+  await mostrarVisao(inicial);
 }
 
 campoTemporada.addEventListener('change', () => {
-  const temporada = Number(campoTemporada.value);
+  const visao = campoTemporada.value;
   const endereco = new URL(location.href);
-  endereco.searchParams.set('temporada', temporada);
+  if (visao === VISAO_HISTORIA) endereco.searchParams.delete('temporada');
+  else endereco.searchParams.set('temporada', visao);
   history.replaceState(null, '', endereco);
-  mostrarTemporada(temporada);
+  mostrarVisao(visao);
 });
 
 iniciar();

@@ -6,12 +6,13 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 
 ## Situação atual
 
-O site está em <https://estatisticas-bahia.web.app> e mostra o histórico de 1931 a 2025. O plano gratuito da API-Football só libera de 2022 a 2024, então o agendamento do robô está desligado no workflow. O botão manual continua lá.
+O site está em <https://estatisticas-bahia.web.app> e abre em toda a história, de 1931 até a última temporada encerrada. Cada temporada também pode ser vista separada.
 
-Há três caminhos para colocar os jogos de 2026:
+Os jogos de 2026 estão no banco do Firebase, vindos da Wikipédia em 02/11/2026 e dos lançamentos à mão. Os que faltam entram em <https://estatisticas-bahia.web.app/adicionar>, com uma conta cadastrada. Veja [Firebase](#firebase).
 
-- **À mão:** em <https://estatisticas-bahia.web.app/adicionar>, com uma conta cadastrada. Veja [Firebase](#firebase).
-- **Pelo Futebol 80:** quando a página publicar os jogos, rode de novo `node scripts/importar-historico.js`. Depois, atualize o período e o aviso de 2026 no rodapé do `index.html`.
+O plano gratuito da API-Football só libera de 2022 a 2024, então o agendamento do robô está desligado no workflow. O botão manual continua lá. Há outros dois caminhos para os jogos de uma temporada:
+
+- **Pelo Futebol 80:** quando a página publicar os jogos, rode de novo `node scripts/importar-historico.js`. Depois, atualize o período e as fontes no rodapé do `index.html`.
 - **Pela API:** com um plano que libere a temporada, tire o comentário do agendamento em `.github/workflows/atualizar.yml` e use o botão **Run workflow**. Depois, volte a citar a API-Football no rodapé.
 
 ## Como funciona
@@ -31,13 +32,15 @@ As etapas abaixo descrevem o projeto com o robô ligado. Sem ele, os dados vêm 
 │       └── atualizar.yml  Agendamento do robô no GitHub Actions
 ├── dados/
 │   ├── config.json        Id do Bahia na API (criado na primeira execução do robô)
+│   ├── historia.json      Jogos encerrados de todas as temporadas, gerado por script
 │   ├── indice.json        Temporadas existentes e data da última atualização
 │   └── jogos/
 │       └── ANO.json       Jogos de uma temporada (exemplo: 2026.json)
 ├── scripts/
 │   ├── atualizar.js             Robô de atualização
 │   ├── importar-historico.js    Importação do histórico, para rodar uma única vez
-│   └── *.test.js                Testes dos dois
+│   ├── gerar-historia.js        Gera dados/historia.json antes de cada publicação
+│   └── *.test.js                Testes
 ├── .nojekyll              Faz o GitHub Pages publicar os arquivos como estão
 ├── adicionar.html         Página para lançar jogos à mão
 ├── firebase-config.js     Configuração pública do Firebase
@@ -107,7 +110,7 @@ Este jogo é só uma ilustração do formato, não é um resultado real.
 | `estadio` | texto ou `null` | Nome do estádio. Pode ficar `null` em jogos antigos. |
 | `cidade` | texto ou `null` | Cidade do jogo. Pode ficar `null` se a fonte não informar. |
 | `situacao` | texto | `agendado`, `ao_vivo`, `encerrado`, `adiado` ou `cancelado`. |
-| `fonte` | texto | De onde veio o jogo: `api-football`, `futebol80` ou `manual`. |
+| `fonte` | texto | De onde veio o jogo: `api-football`, `futebol80`, `wikipedia` ou `manual`. |
 | `id_api` | número ou `null` | Número do jogo na API-Football. Fica `null` em jogos históricos e nos lançados à mão. |
 | `atualizado_em` | texto | Data e hora da última alteração do jogo, com o fuso de Salvador. |
 
@@ -210,8 +213,10 @@ O `index.html` é um arquivo único. Ele lê `dados/indice.json` e o arquivo da 
 Como a conta é feita:
 
 - **Aproveitamento:** 3 pontos por vitória e 1 por empate, só com jogos encerrados.
-- **Pênaltis:** a disputa aparece no jogo, mas o resultado conta como empate.
+- **Pênaltis:** a disputa aparece no jogo, mas não muda o resultado: vale o placar. Isso inclui o jogo de volta em que o placar não empatou, mas a soma dos dois jogos sim.
 - **Jogo ao vivo:** aparece nas listas e só entra na conta depois de encerrado.
+
+O site abre em **toda a história**, com o resumo, a tabela por competição e a tabela temporada a temporada. A conta vai até a última temporada encerrada: a do ano atual fica de fora até o ano virar. Os nomes do Brasileiro são agrupados por divisão, e os torneios menores, em "Outros torneios". O `dados/historia.json` guarda só os jogos, para o site não precisar baixar 95 arquivos. As contas continuam sendo feitas no navegador.
 
 Para abrir direto uma temporada, acrescente `?temporada=2025` ao endereço.
 
