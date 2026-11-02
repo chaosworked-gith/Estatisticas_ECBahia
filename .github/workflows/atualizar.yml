@@ -1,0 +1,60 @@
+name: Atualizar jogos
+
+on:
+  schedule:
+    # A cada hora, no minuto 17: sempre consulta a API.
+    - cron: '17 * * * *'
+    # Nos outros quartos de hora: só consulta a API se houver jogo do Bahia por perto.
+    - cron: '2,32,47 * * * *'
+  workflow_dispatch:
+    inputs:
+      temporada:
+        description: 'Temporada (deixe vazio para usar o ano atual)'
+        required: false
+        type: string
+
+# Nunca roda duas vezes ao mesmo tempo: a execução nova espera a atual terminar.
+concurrency:
+  group: atualizar-jogos
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v7
+
+      - name: Preparar o Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Rodar o robô
+        id: robo
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          TEMPORADA: ${{ inputs.temporada }}
+          SO_PERTO_DO_JOGO: ${{ github.event.schedule == '2,32,47 * * * *' }}
+        run: node scripts/atualizar.js
+
+      # Roda mesmo se o robô falhar: o id do Bahia descoberto antes da falha
+      # precisa ficar guardado, para não gastar essa consulta de novo a cada hora.
+      - name: Enviar o que mudou
+        if: ${{ !cancelled() && steps.robo.conclusion != 'skipped' }}
+        run: |
+          git add dados
+          if git diff --cached --quiet; then
+            echo "Nenhum dado mudou. Nada foi enviado."
+            exit 0
+          fi
+          agora=$(node -p "new Date().toLocaleString('pt-BR', { timeZone: 'America/Bahia', dateStyle: 'short', timeStyle: 'short' })")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Atualiza os dados em $agora (horário de Salvador)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
