@@ -6,11 +6,11 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 
 ## Situação atual
 
-O site mostra o histórico de 1931 a 2025. O plano gratuito da API-Football só libera de 2022 a 2024, então o agendamento do robô está desligado no workflow. O botão manual continua lá.
+O site está em <https://estatisticas-bahia.web.app> e mostra o histórico de 1931 a 2025. O plano gratuito da API-Football só libera de 2022 a 2024, então o agendamento do robô está desligado no workflow. O botão manual continua lá.
 
 Há três caminhos para colocar os jogos de 2026:
 
-- **À mão:** pela página `adicionar.html`, depois de configurar o [Firebase](#firebase).
+- **À mão:** em <https://estatisticas-bahia.web.app/adicionar>, com uma conta cadastrada. Veja [Firebase](#firebase).
 - **Pelo Futebol 80:** quando a página publicar os jogos, rode de novo `node scripts/importar-historico.js`. Depois, atualize o período e o aviso de 2026 no rodapé do `index.html`.
 - **Pela API:** com um plano que libere a temporada, tire o comentário do agendamento em `.github/workflows/atualizar.yml` e use o botão **Run workflow**. Depois, volte a citar a API-Football no rodapé.
 
@@ -238,9 +238,9 @@ Regras de funcionamento:
 Para publicar, depois de entrar na conta com `npx firebase-tools login`:
 
 ```bash
-npx firebase-tools deploy --project ID_DO_PROJETO
+npx firebase-tools deploy
 ```
 
-Jogo lançado à mão não precisa de publicação: ele aparece assim que é salvo. A publicação só é necessária quando muda alguma página ou algum arquivo de `dados/`.
+Jogo lançado à mão não precisa de publicação: ele aparece assim que é salvo. A publicação só é necessária quando muda alguma página ou algum arquivo de `dados/`. O que o robô ou o importador gravam no repositório só chega ao site depois de publicado.
 
 O plano gratuito do Firebase (Spark) não pede cartão e permite 360 MB de tráfego da hospedagem e 50 mil leituras do banco por dia. Cada visita faz até 2 leituras.
