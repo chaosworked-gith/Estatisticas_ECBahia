@@ -218,7 +218,9 @@ Como a conta é feita:
 
 O site abre em **toda a história**, com o resumo, a tabela por competição e a tabela temporada a temporada. A conta vai até a última temporada encerrada: a do ano atual fica de fora até o ano virar. Os nomes do Brasileiro são agrupados por divisão, e os torneios menores, em "Outros torneios". O `dados/historia.json` guarda só os jogos, para o site não precisar baixar 95 arquivos. As contas continuam sendo feitas no navegador.
 
-Para abrir direto uma temporada, acrescente `?temporada=2025` ao endereço.
+Os seletores de temporada e de competição se combinam. Com uma competição escolhida, toda a história mostra o resumo dela e a tabela ano a ano, e cada ano abre os jogos só daquela competição. O filtro usa os mesmos grupos da tabela geral: um grupo com vários nomes mostra também o detalhe de cada nome.
+
+Para abrir direto uma visão, use o endereço: `?temporada=2025`, `?competicao=Copa%20do%20Nordeste` ou os dois juntos.
 
 Para ver o site no computador, é preciso um servidor local. Abrindo o arquivo direto, o navegador bloqueia a leitura dos JSON e o site mostra uma mensagem de erro.
 

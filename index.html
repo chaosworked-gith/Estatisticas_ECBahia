@@ -68,11 +68,13 @@
 
   .topo__faixa { height: 10px; background: linear-gradient(#fff 0 40%, var(--vermelho) 40% 100%); }
 
-  .seletor { display: grid; gap: 4px; }
+  .filtros { display: grid; gap: 10px; min-width: 0; }
+  .seletor { display: grid; gap: 4px; min-width: 0; }
   .seletor[hidden] { display: none; }
   .seletor label { color: var(--azul-claro); font-size: 0.9375rem; font-weight: 600; }
   .seletor select {
-    min-width: 10rem;
+    width: 100%;
+    min-width: 0;
     min-height: 44px;
     padding: 0 12px;
     border: 0;
@@ -247,6 +249,10 @@
     .tabela thead tr { border-bottom: 1px solid var(--linha); }
   }
 
+  @media (min-width: 560px) {
+    .filtros { grid-template-columns: minmax(0, 11rem) minmax(0, 19rem); }
+  }
+
   /* Em tela estreita, os quatro quadros viram dois por linha, para caber número como 2.822. */
   @media (max-width: 419px) {
     .numeros--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -254,7 +260,7 @@
   }
 
   @media (min-width: 720px) {
-    .topo__dentro { grid-template-columns: minmax(0, 1fr) auto; align-items: end; padding: 28px 24px 24px; }
+    .topo__dentro { padding: 28px 24px 24px; }
     main { padding: 24px; gap: 20px; }
     .colunas { gap: 20px; }
     .cartao { padding: 20px; }
@@ -268,6 +274,7 @@
   }
 
   @media (min-width: 880px) {
+    .topo__dentro { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
     .colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .colunas--uma { grid-template-columns: minmax(0, 1fr); }
     .resumo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 28px; align-items: center; }
@@ -285,9 +292,15 @@
       <h1>Estatísticas do Bahia</h1>
       <p class="topo__atualizado" id="atualizado">Buscando os dados...</p>
     </div>
-    <div class="seletor" id="seletor" hidden>
-      <label for="temporada">Temporada</label>
-      <select id="temporada"></select>
+    <div class="filtros">
+      <div class="seletor" id="seletor" hidden>
+        <label for="temporada">Temporada</label>
+        <select id="temporada"></select>
+      </div>
+      <div class="seletor" id="seletor-competicao" hidden>
+        <label for="competicao">Competição</label>
+        <select id="competicao"></select>
+      </div>
     </div>
   </div>
   <div class="topo__faixa"></div>
@@ -333,12 +346,15 @@ const AVISOS = {
 const conteudo = document.getElementById('conteudo');
 const seletor = document.getElementById('seletor');
 const campoTemporada = document.getElementById('temporada');
+const seletorCompeticao = document.getElementById('seletor-competicao');
+const campoCompeticao = document.getElementById('competicao');
 const atualizado = document.getElementById('atualizado');
 
 const temporadasCarregadas = new Map();
 let temporadasEmArquivo = new Set();
 let temporadasManuais = new Set();
 let historiaCarregada = null;
+let competicaoPedida = null;
 let pedidoAtual = 0;
 
 // Monta um elemento. Os textos entram como texto puro, nunca como HTML.
@@ -603,7 +619,7 @@ function criarLinhaDaTabela(nome, numeros) {
     ...COLUNAS.map(([, , valor]) => el('td', { role: 'cell' }, valor(numeros))));
 }
 
-function criarCompeticoes(jogos, agrupar = (nome) => nome) {
+function criarCompeticoes(jogos, { agrupar = (nome) => nome, titulo = 'Por competição', enderecoDe = null } = {}) {
   const porCompeticao = new Map();
   for (const jogo of jogos) {
     const nome = agrupar(jogo.competicao || 'Competição não informada');
@@ -617,7 +633,7 @@ function criarCompeticoes(jogos, agrupar = (nome) => nome) {
     .sort((a, b) => b.numeros.jogos - a.numeros.jogos || a.nome.localeCompare(b.nome, 'pt-BR'));
 
   const secao = el('section', { class: 'cartao', 'aria-labelledby': 'titulo-competicoes' },
-    el('h2', { id: 'titulo-competicoes' }, 'Por competição'));
+    el('h2', { id: 'titulo-competicoes' }, titulo));
 
   if (linhas.length === 0) {
     secao.append(el('p', { class: 'mensagem' }, 'A tabela aparece depois do primeiro jogo encerrado.'));
@@ -631,7 +647,8 @@ function criarCompeticoes(jogos, agrupar = (nome) => nome) {
           el('th', { role: 'columnheader', scope: 'col' }, 'Competição'),
           ...COLUNAS.map(([sigla, nome]) =>
             el('th', { role: 'columnheader', scope: 'col' }, el('abbr', { title: nome }, sigla))))),
-      el('tbody', { role: 'rowgroup' }, ...linhas.map(({ nome, numeros }) => criarLinhaDaTabela(nome, numeros))),
+      el('tbody', { role: 'rowgroup' }, ...linhas.map(({ nome, numeros }) =>
+        criarLinhaDaTabela(enderecoDe ? el('a', { href: enderecoDe(nome) }, nome) : nome, numeros))),
       linhas.length > 1
         ? el('tfoot', { role: 'rowgroup' }, criarLinhaDaTabela('Total', calcularNumeros(jogos)))
         : null),
@@ -677,14 +694,35 @@ function grupoDaCompeticao(nome) {
   return nome;
 }
 
-function criarPorTemporada(jogos) {
+function competicaoDoJogo(jogo) {
+  return grupoDaCompeticao(jogo.competicao || 'Competição não informada');
+}
+
+function filtrarPorCompeticao(jogos, competicao) {
+  return competicao ? jogos.filter((jogo) => competicaoDoJogo(jogo) === competicao) : jogos;
+}
+
+function enderecoDaVisao(temporada, competicao) {
+  const busca = new URLSearchParams();
+  if (temporada) busca.set('temporada', temporada);
+  if (competicao) busca.set('competicao', competicao);
+  return `?${busca}`;
+}
+
+// Um grupo pode reunir vários nomes: o Brasileiro já foi Taça de Ouro, Copa União e outros.
+function criarNomesDaCompeticao(jogos) {
+  const nomes = new Set(jogos.map((jogo) => jogo.competicao));
+  return nomes.size > 1 ? criarCompeticoes(jogos, { titulo: 'Nomes desta competição' }) : null;
+}
+
+function criarPorTemporada(jogos, competicao) {
   const porTemporada = new Map();
   for (const jogo of jogos) {
     if (!porTemporada.has(jogo.temporada)) porTemporada.set(jogo.temporada, []);
     porTemporada.get(jogo.temporada).push(jogo);
   }
   const linhas = [...porTemporada].sort(([a], [b]) => a - b).map(([temporada, jogosDoAno]) =>
-    criarLinhaDaTabela(el('a', { href: `?temporada=${temporada}` }, temporada), calcularNumeros(jogosDoAno)));
+    criarLinhaDaTabela(el('a', { href: enderecoDaVisao(temporada, competicao) }, temporada), calcularNumeros(jogosDoAno)));
 
   return el('section', { class: 'cartao', 'aria-labelledby': 'titulo-por-temporada' },
     el('h2', { id: 'titulo-por-temporada' }, 'Temporada a temporada'),
@@ -697,37 +735,59 @@ function criarPorTemporada(jogos) {
       el('tbody', { role: 'rowgroup' }, ...linhas)));
 }
 
-function desenharHistoria(jogos, faltaramManuais) {
+function desenharSecoes(...secoes) {
+  conteudo.replaceChildren(...secoes.filter(Boolean));
+}
+
+function desenharHistoria(todos, faltaramManuais) {
+  const competicao = campoCompeticao.value;
+  const jogos = filtrarPorCompeticao(todos, competicao);
+  document.title = `${competicao || 'Toda a história'} | Estatísticas do Bahia`;
+
   if (jogos.length === 0) {
-    desenharAviso('Ainda não há temporadas encerradas para mostrar. Escolha uma temporada no seletor.');
+    desenharAviso(competicao
+      ? `Nenhum jogo de ${competicao} em temporadas encerradas. Escolha uma temporada no seletor.`
+      : 'Ainda não há temporadas encerradas para mostrar. Escolha uma temporada no seletor.');
     return;
   }
-  const anos = jogos.map((jogo) => jogo.temporada);
-  const titulo = `Resumo de ${Math.min(...anos)} a ${Math.max(...anos)}`;
-  const semPlacar = jogos.filter((jogo) => !Number.isInteger(jogo.gols_mandante) || !Number.isInteger(jogo.gols_visitante)).length;
-  const nota = semPlacar > 0 ? `Mais ${semPlacar} jogos sem placar, decididos por W.O., ficam fora da conta.` : null;
 
-  document.title = 'Toda a história | Estatísticas do Bahia';
-  conteudo.replaceChildren(
-    faltaramManuais ? el('p', { class: 'mensagem' }, 'Os jogos lançados à mão não carregaram agora. Recarregue a página em instantes.') : '',
+  const anos = jogos.map((jogo) => jogo.temporada);
+  const periodo = `de ${Math.min(...anos)} a ${Math.max(...anos)}`;
+  const titulo = competicao ? `${competicao} ${periodo}` : `Resumo ${periodo}`;
+  const semPlacar = jogos.filter((jogo) => !Number.isInteger(jogo.gols_mandante) || !Number.isInteger(jogo.gols_visitante)).length;
+  const nota = semPlacar === 0 ? null : semPlacar === 1
+    ? 'Mais 1 jogo sem placar, decidido por W.O., fica fora da conta.'
+    : `Mais ${semPlacar} jogos sem placar, decididos por W.O., ficam fora da conta.`;
+
+  desenharSecoes(
+    faltaramManuais ? el('p', { class: 'mensagem' }, 'Os jogos lançados à mão não carregaram agora. Recarregue a página em instantes.') : null,
     criarResumo(titulo, calcularNumeros(jogos), nota),
-    criarCompeticoes(jogos, grupoDaCompeticao),
-    criarPorTemporada(jogos));
+    competicao
+      ? criarNomesDaCompeticao(jogos)
+      : criarCompeticoes(jogos, { agrupar: grupoDaCompeticao, enderecoDe: (nome) => enderecoDaVisao(null, nome) }),
+    criarPorTemporada(jogos, competicao));
 }
 
 // Telas
 
 function desenharTemporada(temporada, jogos, faltaramManuais) {
-  const ordenados = [...jogos].sort(compararPorData);
-  document.title = `Temporada ${temporada} | Estatísticas do Bahia`;
-  const aviso = faltaramManuais
-    ? el('p', { class: 'mensagem' }, 'Os jogos lançados à mão não carregaram agora. Recarregue a página em instantes.')
-    : '';
-  conteudo.replaceChildren(
-    aviso,
-    criarResumo(`Resumo de ${temporada}`, calcularNumeros(ordenados)),
+  const competicao = campoCompeticao.value;
+  const ordenados = [...filtrarPorCompeticao(jogos, competicao)].sort(compararPorData);
+  const nomeDaVisao = competicao ? `${competicao} em ${temporada}` : `Temporada ${temporada}`;
+  document.title = `${nomeDaVisao} | Estatísticas do Bahia`;
+
+  if (competicao && ordenados.length === 0) {
+    desenharAviso(`Nenhum jogo de ${competicao} em ${temporada}.`);
+    return;
+  }
+
+  desenharSecoes(
+    faltaramManuais ? el('p', { class: 'mensagem' }, 'Os jogos lançados à mão não carregaram agora. Recarregue a página em instantes.') : null,
+    criarResumo(competicao ? nomeDaVisao : `Resumo de ${temporada}`, calcularNumeros(ordenados)),
     criarProximosEUltimos(ordenados, temporada),
-    criarCompeticoes(ordenados),
+    competicao
+      ? criarNomesDaCompeticao(ordenados)
+      : criarCompeticoes(ordenados, { enderecoDe: (nome) => enderecoDaVisao(temporada, grupoDaCompeticao(nome)) }),
     criarTodosOsJogos(ordenados, temporada));
 }
 
@@ -834,7 +894,10 @@ async function mostrarTemporada(temporada) {
   conteudo.classList.add('carregando');
   try {
     const { jogos, faltaramManuais } = await buscarTemporada(temporada);
-    if (pedido === pedidoAtual) desenharTemporada(temporada, jogos, faltaramManuais);
+    if (pedido === pedidoAtual) {
+      acrescentarCompeticoes(jogos);
+      desenharTemporada(temporada, jogos, faltaramManuais);
+    }
   } catch (erro) {
     console.error(erro);
     if (pedido === pedidoAtual) {
@@ -881,15 +944,65 @@ async function mostrarHistoria() {
   } catch (erro) {
     console.error(erro);
     if (pedido === pedidoAtual) {
-      desenharErro('Não deu para carregar toda a história. Tente de novo em instantes.', mostrarHistoria);
+      desenharErro('Não deu para carregar toda a história. Tente de novo em instantes.', mostrarVisao);
     }
   } finally {
     if (pedido === pedidoAtual) conteudo.classList.remove('carregando');
   }
 }
 
-function mostrarVisao(visao) {
+function mostrarVisao() {
+  const visao = campoTemporada.value;
   return visao === VISAO_HISTORIA ? mostrarHistoria() : mostrarTemporada(Number(visao));
+}
+
+// A competição pedida no endereço pode só aparecer depois de a temporada carregar.
+function aplicarCompeticaoPedida() {
+  if (competicaoPedida && [...campoCompeticao.options].some((opcao) => opcao.value === competicaoPedida)) {
+    campoCompeticao.value = competicaoPedida;
+    competicaoPedida = null;
+  }
+}
+
+// Competições de jogos lançados à mão podem não estar na história.
+function acrescentarCompeticoes(jogos) {
+  const existentes = new Set([...campoCompeticao.options].map((opcao) => opcao.value));
+  for (const nome of new Set(jogos.map(competicaoDoJogo))) {
+    if (!existentes.has(nome)) campoCompeticao.append(el('option', { value: nome }, nome));
+  }
+  aplicarCompeticaoPedida();
+}
+
+// Lista as competições da que tem mais jogos para a que tem menos.
+async function prepararCompeticoes() {
+  competicaoPedida = new URLSearchParams(location.search).get('competicao');
+  let jogos = [];
+  try {
+    ({ jogos } = await buscarHistoria());
+  } catch (erro) {
+    console.error(erro);
+  }
+  const contagem = new Map();
+  for (const jogo of jogos) {
+    const nome = competicaoDoJogo(jogo);
+    contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
+  }
+  const nomes = [...contagem].sort(([, a], [, b]) => b - a).map(([nome]) => nome);
+  campoCompeticao.replaceChildren(
+    el('option', { value: '' }, 'Todas as competições'),
+    ...nomes.map((nome) => el('option', { value: nome }, nome)));
+  seletorCompeticao.hidden = false;
+  aplicarCompeticaoPedida();
+}
+
+function atualizarEndereco() {
+  const endereco = new URL(location.href);
+  const visao = campoTemporada.value;
+  if (visao === VISAO_HISTORIA) endereco.searchParams.delete('temporada');
+  else endereco.searchParams.set('temporada', visao);
+  if (campoCompeticao.value) endereco.searchParams.set('competicao', campoCompeticao.value);
+  else endereco.searchParams.delete('competicao');
+  history.replaceState(null, '', endereco);
 }
 
 // Sem pedido no endereço, o site abre em toda a história.
@@ -938,17 +1051,16 @@ async function iniciar() {
   const inicial = escolherVisaoInicial(temporadas);
   campoTemporada.value = inicial;
   seletor.hidden = false;
-  await mostrarVisao(inicial);
+  await prepararCompeticoes();
+  await mostrarVisao();
 }
 
-campoTemporada.addEventListener('change', () => {
-  const visao = campoTemporada.value;
-  const endereco = new URL(location.href);
-  if (visao === VISAO_HISTORIA) endereco.searchParams.delete('temporada');
-  else endereco.searchParams.set('temporada', visao);
-  history.replaceState(null, '', endereco);
-  mostrarVisao(visao);
-});
+for (const campo of [campoTemporada, campoCompeticao]) {
+  campo.addEventListener('change', () => {
+    atualizarEndereco();
+    mostrarVisao();
+  });
+}
 
 iniciar();
 </script>
