@@ -17,15 +17,18 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 ├── .github/
 │   └── workflows/         Agendamento do robô no GitHub Actions
 ├── dados/
+│   ├── config.json        Id do Bahia na API (criado na primeira execução do robô)
 │   ├── indice.json        Temporadas existentes e data da última atualização
 │   └── jogos/
 │       └── ANO.json       Jogos de uma temporada (exemplo: 2026.json)
-├── scripts/               Robô de atualização e importação do histórico
+├── scripts/
+│   ├── atualizar.js       Robô de atualização
+│   └── atualizar.test.js  Testes do robô
 ├── index.html             O site (será criado em etapa futura)
 └── README.md
 ```
 
-As pastas `dados/jogos`, `scripts` e `.github/workflows` têm um arquivo `.gitkeep` porque o Git não guarda pastas vazias. Ele pode ser apagado quando a pasta receber seu primeiro arquivo.
+As pastas `dados/jogos` e `.github/workflows` têm um arquivo `.gitkeep` porque o Git não guarda pastas vazias. Ele pode ser apagado quando a pasta receber seu primeiro arquivo.
 
 ## Formato dos dados
 
@@ -101,3 +104,34 @@ Vitórias, empates, derrotas e aproveitamento não ficam nos arquivos. O site ca
 - Cada jogo fica no arquivo da sua temporada, mesmo que a data caia em outro ano. Exemplo: os jogos do Brasileirão de 2020 disputados em fevereiro de 2021 ficam em `2020.json`.
 - A chave da API fica nos Secrets do repositório, com o nome `API_FOOTBALL_KEY`. Ela nunca é escrita no código.
 - O site usa caminhos relativos, como `dados/indice.json`, porque o GitHub Pages publica o projeto em uma subpasta do endereço.
+
+## O robô
+
+O `scripts/atualizar.js` usa só o Node.js, sem instalar nada. Em cada execução, ele:
+
+1. Lê o id do Bahia em `dados/config.json`. Na primeira execução, descobre o id na API e guarda nesse arquivo.
+2. Busca todos os jogos da temporada com uma única consulta, no fuso `America/Bahia`.
+3. Converte os jogos para o formato acima e junta com os que já existem, usando o `id_api`.
+4. Só grava os arquivos se algo mudou. É nesse caso que `ultima_atualizacao` muda.
+5. Mostra no registro quantas consultas ainda restam no dia.
+
+A primeira execução gasta duas consultas. As seguintes gastam uma.
+
+Para rodar no computador, no PowerShell:
+
+```powershell
+$env:API_FOOTBALL_KEY = "sua_chave"
+node scripts/atualizar.js
+```
+
+Sem outra indicação, o robô usa o ano atual em Salvador. Para consultar outra temporada, rode antes `$env:TEMPORADA = "2024"`.
+
+Se a API recusar a consulta, o robô explica o motivo, não grava os jogos e termina com erro.
+
+Competição ou fase sem tradução aparece como `Aviso:` no registro e fica com o nome da API. Jogo com situação desconhecida também gera aviso e não entra no arquivo. As traduções ficam em tabelas no começo do script.
+
+Para rodar os testes, que não acessam a API:
+
+```bash
+node --test
+```
