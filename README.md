@@ -4,7 +4,18 @@ Site com os jogos e as estatísticas do Bahia, publicado no GitHub Pages.
 
 O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON neste repositório, um robô mantém esses arquivos em dia e a página calcula os números na hora em que é aberta.
 
+## Situação atual
+
+O site mostra o histórico de 1931 a 2025. A temporada 2026 ainda não está aqui, porque o plano gratuito da API-Football só libera de 2022 a 2024. Por isso, o agendamento do robô está desligado no workflow. O botão manual continua lá.
+
+Há dois caminhos para colocar os jogos de 2026:
+
+- **Pelo Futebol 80:** quando a página publicar os jogos, rode de novo `node scripts/importar-historico.js`. Depois, atualize o período e o aviso de 2026 no rodapé do `index.html`.
+- **Pela API:** com um plano que libere a temporada, tire o comentário do agendamento em `.github/workflows/atualizar.yml` e use o botão **Run workflow**. Depois, volte a citar a API-Football no rodapé.
+
 ## Como funciona
+
+As etapas abaixo descrevem o projeto com o robô ligado. Sem ele, os dados vêm só da importação do histórico.
 
 1. O robô em Node.js roda no GitHub Actions e consulta a API-Football.
 2. Se algum dado mudou, ele grava os arquivos em `dados/` e envia para o repositório.
@@ -139,7 +150,7 @@ node --test
 
 ## O agendamento
 
-O arquivo `.github/workflows/atualizar.yml` roda o robô no GitHub Actions:
+O agendamento está desligado por enquanto (veja [Situação atual](#situação-atual)). Quando ligado, o arquivo `.github/workflows/atualizar.yml` roda o robô no GitHub Actions:
 
 - **Quando consulta a API:** a cada hora, no minuto 17, e pelo botão **Run workflow**, na aba **Actions**.
 - **Em dia de jogo:** nos minutos 2, 32 e 47, o robô também roda, mas só consulta a API se houver jogo por perto. Assim, perto da partida, a consulta acontece a cada 15 minutos.

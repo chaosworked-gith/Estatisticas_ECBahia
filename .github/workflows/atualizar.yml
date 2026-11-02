@@ -1,11 +1,13 @@
 name: Atualizar jogos
 
 on:
-  schedule:
-    # A cada hora, no minuto 17: sempre consulta a API.
-    - cron: '17 * * * *'
-    # Nos outros quartos de hora: só consulta a API se houver jogo do Bahia por perto.
-    - cron: '2,32,47 * * * *'
+  # Agendamento desligado em 02/11/2026: o plano gratuito da API recusa a temporada atual.
+  # Com um plano que libere a temporada, é só tirar o comentário das linhas abaixo.
+  # schedule:
+  #   # A cada hora, no minuto 17: sempre consulta a API.
+  #   - cron: '17 * * * *'
+  #   # Nos outros quartos de hora: só consulta a API se houver jogo do Bahia por perto.
+  #   - cron: '2,32,47 * * * *'
   workflow_dispatch:
     inputs:
       temporada:
