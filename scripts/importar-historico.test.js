@@ -243,6 +243,25 @@ test('rodar de novo não duplica nem regrava nada', async (t) => {
   assert.equal(fs.readFileSync(path.join(pasta, 'indice.json'), 'utf8'), indiceAntes);
 });
 
+test('rodar de novo mantém o que outras fontes completaram', async (t) => {
+  const pasta = criarPastaDados(t);
+  silenciar(t);
+  await executar({ pastaDados: pasta, html: montarPagina(EXEMPLO), instante: AGORA });
+  const arquivo = path.join(pasta, 'jogos', '1931.json');
+  const dados = lerDados(pasta, 'jogos', '1931.json');
+  Object.assign(dados.jogos[2], { estadio: 'Campo da Graça', cidade: 'Salvador', fase: '1º Turno', hora: '15:30' });
+  fs.writeFileSync(arquivo, JSON.stringify(dados));
+
+  const resultado = await executar({ pastaDados: pasta, html: montarPagina(EXEMPLO), instante: AGORA });
+
+  assert.equal(resultado.alterados, 0);
+  const jogo = lerDados(pasta, 'jogos', '1931.json').jogos[2];
+  assert.equal(jogo.estadio, 'Campo da Graça');
+  assert.equal(jogo.cidade, 'Salvador');
+  assert.equal(jogo.fase, '1º Turno');
+  assert.equal(jogo.hora, '15:30');
+});
+
 test('não apaga nem sobrescreve jogo que veio da API', async (t) => {
   const pasta = criarPastaDados(t);
   silenciar(t);

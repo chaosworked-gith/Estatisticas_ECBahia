@@ -21,6 +21,7 @@ const {
 const URL_PAGINA = 'https://www.futebol80.com.br/links/times/bahia/bahiajg.htm';
 const FONTE = 'futebol80';
 const TEMPO_LIMITE_MS = 60000;
+const CAMPOS_COMPLEMENTADOS = ['hora', 'fase', 'estadio', 'cidade'];
 
 const MESES = {
   jan: '01',
@@ -227,8 +228,14 @@ function juntarHistorico(existentes, importados) {
     if (!atual) {
       jogos.push(jogo);
       resumo.novos += 1;
-    } else if (jogoMudou(atual, jogo)) {
-      jogos[jogos.indexOf(atual)] = jogo;
+      continue;
+    }
+
+    // A tabela não traz estes campos. O que outras fontes completaram continua lá.
+    const mesclado = { ...jogo };
+    for (const campo of CAMPOS_COMPLEMENTADOS) mesclado[campo] = jogo[campo] ?? atual[campo] ?? null;
+    if (jogoMudou(atual, mesclado)) {
+      jogos[jogos.indexOf(atual)] = mesclado;
       resumo.alterados += 1;
     } else {
       resumo.iguais += 1;

@@ -960,18 +960,18 @@
       "data": "1979-10-03",
       "hora": null,
       "competicao": "Campeonato Brasileiro (Copa Brasil)",
-      "fase": null,
+      "fase": "1ª Fase",
       "mandante": "Bahia",
       "visitante": "Dom Bosco-MT",
       "gols_mandante": 2,
       "gols_visitante": 1,
       "penaltis": null,
-      "estadio": null,
-      "cidade": null,
+      "estadio": "Fonte Nova",
+      "cidade": "Salvador",
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T13:49:29-03:00"
+      "atualizado_em": "2026-11-02T17:07:37-03:00"
     },
     {
       "id": "f80-1979-10-07-vitoria-ba",

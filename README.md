@@ -206,6 +206,23 @@ A tabela não informa a temporada. Por isso, cada jogo fica no ano da sua data, 
 
 Se a API trouxer uma temporada que já tem jogos do histórico, a versão da API fica no lugar do jogo do mesmo dia.
 
+## Estádio, cidade e horário
+
+A tabela do Futebol 80 não traz esses campos. O `scripts/complementar-jogos.js` completa o que encontra nas [fichas técnicas do Futebol 80](https://www.futebol80.com.br/links/times/bahia/bahiaft.htm) e nas páginas de temporada da Wikipédia (2023 a 2025):
+
+```bash
+node scripts/complementar-jogos.js --simular
+```
+
+Sem `--simular`, ele grava. Depois, é preciso publicar o site. As regras são estas:
+
+- **Só completa:** preenche hora, fase, estádio e cidade quando estão vazios. Nunca muda placar, data ou times.
+- **Placar diferente:** o jogo fica como está e aparece no registro, para alguém conferir.
+- **Data diferente:** com mesmo adversário e mesmo placar, em até 3 dias de diferença, é o mesmo jogo. O local é aproveitado, a data dos dados não muda, e a diferença aparece no registro.
+- **Importação:** rodar `importar-historico.js` de novo mantém o que foi completado.
+
+O oGol tem mais dados de local, mas bloqueia acesso automático. Para usá-los, é preciso a autorização do site ou que uma pessoa copie o conteúdo das páginas.
+
 ## O site
 
 O `index.html` é um arquivo único. Ele lê `dados/indice.json` e o arquivo da temporada escolhida, e calcula os números no navegador. Só a fonte vem de fora, do Google Fonts. Sem ela, o site usa uma fonte do próprio aparelho.

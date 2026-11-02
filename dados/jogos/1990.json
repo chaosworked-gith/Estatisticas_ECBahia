@@ -798,18 +798,18 @@
       "data": "1990-09-16",
       "hora": null,
       "competicao": "Campeonato Brasileiro Série A",
-      "fase": null,
+      "fase": "1ª Fase",
       "mandante": "Palmeiras-SP",
       "visitante": "Bahia",
       "gols_mandante": 1,
       "gols_visitante": 2,
       "penaltis": null,
-      "estadio": null,
-      "cidade": null,
+      "estadio": "Parque Antártica",
+      "cidade": "São Paulo",
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T13:49:29-03:00"
+      "atualizado_em": "2026-11-02T17:07:37-03:00"
     },
     {
       "id": "f80-1990-09-19-sao-jose-sp",

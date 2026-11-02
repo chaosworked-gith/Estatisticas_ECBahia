@@ -744,18 +744,18 @@
       "data": "2022-07-29",
       "hora": null,
       "competicao": "Campeonato Brasileiro Série B",
-      "fase": null,
+      "fase": "2º Turno",
       "mandante": "Bahia",
       "visitante": "Náutico-PE",
       "gols_mandante": 3,
       "gols_visitante": 0,
       "penaltis": null,
-      "estadio": null,
-      "cidade": null,
+      "estadio": "Arena Fonte Nova",
+      "cidade": "Salvador",
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T13:49:29-03:00"
+      "atualizado_em": "2026-11-02T17:07:37-03:00"
     },
     {
       "id": "f80-2022-08-06-csa-al",

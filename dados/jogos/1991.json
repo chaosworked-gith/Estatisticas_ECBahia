@@ -1158,18 +1158,18 @@
       "data": "1991-12-12",
       "hora": null,
       "competicao": "Campeonato Baiano",
-      "fase": null,
+      "fase": "Final",
       "mandante": "Bahia",
       "visitante": "Fluminense de Feira-BA",
       "gols_mandante": 3,
       "gols_visitante": 0,
       "penaltis": null,
-      "estadio": null,
-      "cidade": null,
+      "estadio": "Fonte Nova",
+      "cidade": "Salvador",
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T13:49:29-03:00"
+      "atualizado_em": "2026-11-02T17:07:37-03:00"
     }
   ]
 }

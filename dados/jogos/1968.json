@@ -1176,18 +1176,18 @@
       "data": "1968-10-27",
       "hora": null,
       "competicao": "Campeonato Brasileiro (Taça de Prata)",
-      "fase": null,
+      "fase": "1ª Fase",
       "mandante": "Bahia",
       "visitante": "Botafogo-RJ",
       "gols_mandante": 1,
       "gols_visitante": 0,
       "penaltis": null,
-      "estadio": null,
-      "cidade": null,
+      "estadio": "Fonte Nova",
+      "cidade": "Salvador",
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T13:49:29-03:00"
+      "atualizado_em": "2026-11-02T17:07:37-03:00"
     },
     {
       "id": "f80-1968-11-10-ypiranga-ba",
