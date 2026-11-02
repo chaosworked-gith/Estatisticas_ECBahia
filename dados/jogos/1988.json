@@ -1356,7 +1356,7 @@
       "data": "1989-02-09",
       "hora": null,
       "competicao": "Campeonato Brasileiro (Copa União)",
-      "fase": null,
+      "fase": "Semifinais",
       "mandante": "Fluminense-RJ",
       "visitante": "Bahia",
       "gols_mandante": 0,
@@ -1367,14 +1367,14 @@
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T17:07:37-03:00"
+      "atualizado_em": "2026-11-02T17:10:08-03:00"
     },
     {
       "id": "f80-1989-02-12-fluminense-rj",
       "data": "1989-02-12",
       "hora": null,
       "competicao": "Campeonato Brasileiro (Copa União)",
-      "fase": null,
+      "fase": "Semifinais",
       "mandante": "Bahia",
       "visitante": "Fluminense-RJ",
       "gols_mandante": 2,
@@ -1385,7 +1385,7 @@
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T17:07:37-03:00"
+      "atualizado_em": "2026-11-02T17:10:08-03:00"
     },
     {
       "id": "f80-1989-02-15-internacional-rs",

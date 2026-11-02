@@ -58,7 +58,7 @@ const MESES_INGLES = {
 };
 
 // Palavras que indicam que um trecho do título da ficha é a fase, e não o nome da competição.
-const PALAVRAS_DE_FASE = /fase|turno|etapa|rodada|final|grupo|quadrangular|triangular|hexagonal|octogonal|repescagem|desempate|jogo/i;
+const PALAVRAS_DE_FASE = /fase|turno|etapa|rodada|fina[li]|quartas|oitavas|grupo|quadrangular|triangular|hexagonal|octogonal|repescagem|desempate|jogo/i;
 
 function limparCelula(html) {
   return html

@@ -1266,7 +1266,7 @@
       "data": "1981-11-21",
       "hora": null,
       "competicao": "Campeonato Baiano",
-      "fase": null,
+      "fase": "Semifinais",
       "mandante": "Bahia",
       "visitante": "Catuense-BA",
       "gols_mandante": 2,
@@ -1277,7 +1277,7 @@
       "situacao": "encerrado",
       "fonte": "futebol80",
       "id_api": null,
-      "atualizado_em": "2026-11-02T17:07:37-03:00"
+      "atualizado_em": "2026-11-02T17:10:08-03:00"
     },
     {
       "id": "f80-1981-11-29-vitoria-ba",
