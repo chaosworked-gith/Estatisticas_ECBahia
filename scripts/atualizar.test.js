@@ -549,3 +549,17 @@ test('robô: TEMPORADA escolhe outro ano e recusa valor inválido', async (t) =>
   process.env.TEMPORADA = 'abc';
   await assert.rejects(executarEm(pasta), /A temporada "abc" não é válida/);
 });
+
+test('robô: TEMPORADA vazia usa o ano atual, como no agendamento do workflow', async (t) => {
+  const pasta = criarPastaDados(t);
+  capturarRegistro(t);
+  const { chamadas } = simularApi(t, {
+    '/teams': { corpo: respostaTimes() },
+    '/fixtures': { corpo: { errors: [], response: [jogoApi()] } },
+  });
+  t.after(() => delete process.env.TEMPORADA);
+
+  process.env.TEMPORADA = '';
+  await executarEm(pasta);
+  assert.equal(chamadas[1].endereco.searchParams.get('season'), '2026');
+});

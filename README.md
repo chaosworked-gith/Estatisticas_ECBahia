@@ -15,7 +15,8 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 ```text
 .
 ├── .github/
-│   └── workflows/         Agendamento do robô no GitHub Actions
+│   └── workflows/
+│       └── atualizar.yml  Agendamento do robô no GitHub Actions
 ├── dados/
 │   ├── config.json        Id do Bahia na API (criado na primeira execução do robô)
 │   ├── indice.json        Temporadas existentes e data da última atualização
@@ -28,7 +29,7 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 └── README.md
 ```
 
-As pastas `dados/jogos` e `.github/workflows` têm um arquivo `.gitkeep` porque o Git não guarda pastas vazias. Ele pode ser apagado quando a pasta receber seu primeiro arquivo.
+A pasta `dados/jogos` tem um arquivo `.gitkeep` porque o Git não guarda pastas vazias. Ele pode ser apagado quando a pasta receber seu primeiro arquivo.
 
 ## Formato dos dados
 
@@ -135,3 +136,17 @@ Para rodar os testes, que não acessam a API:
 ```bash
 node --test
 ```
+
+## O agendamento
+
+O arquivo `.github/workflows/atualizar.yml` roda o robô no GitHub Actions:
+
+- **Quando roda:** a cada hora, no minuto 17, e também pelo botão **Run workflow**, na aba **Actions**.
+- **Temporada:** o botão tem um campo opcional para consultar outro ano. Vazio, usa o ano atual.
+- **Chave:** vem do Secret `API_FOOTBALL_KEY` do repositório.
+- **Envio:** só acontece quando algo mudou em `dados/`. A mensagem do commit mostra a data e a hora de Salvador.
+- **Uma execução por vez:** se o horário de outra chegar, ela espera a atual terminar.
+
+Se o robô falhar, a execução aparece com erro na aba **Actions**, com a explicação no passo **Rodar o robô**.
+
+O agendamento do GitHub não é exato. Ele pode atrasar e, em horários de muito movimento, pular uma execução. Em repositórios públicos, o GitHub também desliga o agendamento depois de 60 dias sem atividade no repositório.
