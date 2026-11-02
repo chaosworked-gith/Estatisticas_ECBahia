@@ -23,14 +23,13 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 │   └── jogos/
 │       └── ANO.json       Jogos de uma temporada (exemplo: 2026.json)
 ├── scripts/
-│   ├── atualizar.js       Robô de atualização
-│   └── atualizar.test.js  Testes do robô
+│   ├── atualizar.js             Robô de atualização
+│   ├── importar-historico.js    Importação do histórico, para rodar uma única vez
+│   └── *.test.js                Testes dos dois
 ├── .nojekyll              Faz o GitHub Pages publicar os arquivos como estão
 ├── index.html             O site
 └── README.md
 ```
-
-A pasta `dados/jogos` tem um arquivo `.gitkeep` porque o Git não guarda pastas vazias. Ele pode ser apagado quando a pasta receber seu primeiro arquivo.
 
 ## Formato dos dados
 
@@ -86,8 +85,8 @@ Este jogo é só uma ilustração do formato, não é um resultado real.
 | `fase` | texto ou `null` | Rodada ou fase, como `3ª rodada` ou `Final`. |
 | `mandante` | texto | Time da casa. |
 | `visitante` | texto | Time de fora. |
-| `gols_mandante` | número ou `null` | Gols do mandante. Fica `null` enquanto o jogo não começa. |
-| `gols_visitante` | número ou `null` | Gols do visitante. Fica `null` enquanto o jogo não começa. |
+| `gols_mandante` | número ou `null` | Gols do mandante. Fica `null` enquanto o jogo não começa e em W.O. do histórico. |
+| `gols_visitante` | número ou `null` | Gols do visitante. Fica `null` enquanto o jogo não começa e em W.O. do histórico. |
 | `penaltis` | objeto ou `null` | Disputa de pênaltis, como `{ "mandante": 4, "visitante": 3 }`. Fica `null` se não houve. |
 | `estadio` | texto ou `null` | Nome do estádio. Pode ficar `null` em jogos antigos. |
 | `cidade` | texto ou `null` | Cidade do jogo. Pode ficar `null` se a fonte não informar. |
@@ -142,15 +141,51 @@ node --test
 
 O arquivo `.github/workflows/atualizar.yml` roda o robô no GitHub Actions:
 
-- **Quando roda:** a cada hora, no minuto 17, e também pelo botão **Run workflow**, na aba **Actions**.
+- **Quando consulta a API:** a cada hora, no minuto 17, e pelo botão **Run workflow**, na aba **Actions**.
+- **Em dia de jogo:** nos minutos 2, 32 e 47, o robô também roda, mas só consulta a API se houver jogo por perto. Assim, perto da partida, a consulta acontece a cada 15 minutos.
 - **Temporada:** o botão tem um campo opcional para consultar outro ano. Vazio, usa o ano atual.
-- **Chave:** vem do Secret `API_FOOTBALL_KEY` do repositório.
+- **Chave:** vem do Secret `API_FOOTBALL_KEY` do repositório. Sem ela, a execução agendada só avisa e termina sem erro. A manual dá erro.
 - **Envio:** só acontece quando algo mudou em `dados/`. A mensagem do commit mostra a data e a hora de Salvador.
 - **Uma execução por vez:** se o horário de outra chegar, ela espera a atual terminar.
 
 Se o robô falhar, a execução aparece com erro na aba **Actions**, com a explicação no passo **Rodar o robô**.
 
 O agendamento do GitHub não é exato. Ele pode atrasar e, em horários de muito movimento, pular uma execução. Em repositórios públicos, o GitHub também desliga o agendamento depois de 60 dias sem atividade no repositório.
+
+### Quantas consultas isso gasta
+
+"Jogo por perto" vai de 30 minutos antes até 3 horas depois do horário marcado, enquanto o jogo não estiver encerrado. Jogo que aparece como ao vivo conta por até 5 horas, para cobrir atrasos. Jogo sem horário definido não conta.
+
+| Situação | Consultas no dia |
+| --- | --- |
+| Dia sem jogo | 24 |
+| Dia de jogo que acaba em cerca de 2 horas | 33 |
+| Dia de jogo, no máximo normal | 35 |
+| Jogo preso como ao vivo | 41 |
+| Limite: consulta em todos os horários, o dia inteiro | 96 |
+
+O plano gratuito permite 100 consultas por dia. Cada execução manual gasta mais uma, e a primeira execução do robô gasta duas.
+
+## O histórico
+
+O `scripts/importar-historico.js` lê a [tabela de jogos do Futebol 80](https://www.futebol80.com.br/links/times/bahia/bahiajg.htm), com autorização do responsável pelo site, e grava um arquivo por temporada, com `fonte` igual a `futebol80`. Foi feito para rodar uma única vez:
+
+```bash
+node scripts/importar-historico.js
+```
+
+Se rodar de novo, não duplica nada. Regras da importação:
+
+- **Conferência:** a leitura precisa bater com os totais publicados na própria página. Se não bater, nada é gravado.
+- **API:** jogos que vieram da API nunca são apagados nem sobrescritos. Se a API já tem o jogo daquele dia, a versão do Futebol 80 não entra.
+- **Mandante:** a página traz sempre o Bahia primeiro e uma coluna com o local. Em jogo fora, o adversário vira mandante e o placar é invertido. Em campo neutro, o Bahia fica como mandante, na ordem da página.
+- **Campos vazios:** a página não informa hora, fase, estádio, cidade e pênaltis.
+- **W.O.:** os 3 jogos decididos por W.O. ficam sem placar. Aparecem na lista, mas não entram na conta.
+- **Nomes:** os times ficam como na página, com o estado, como `Vitória-BA`. Os nomes da API vêm sem o estado.
+
+A tabela não informa a temporada. Por isso, cada jogo fica no ano da sua data, com uma exceção: jogos de campeonatos nacionais que terminaram no ano seguinte ficam no arquivo da edição a que pertencem. São 45 jogos: as Taças Brasil de 1959, 1963 e 1968 e os Brasileiros de 1973, 1977, 1986, 1988 e 2020. O Campeonato Baiano também atravessou o ano em várias edições antigas, mas a tabela não permite separar essas edições, então ele fica no ano da data.
+
+Se a API trouxer uma temporada que já tem jogos do histórico, a versão da API fica no lugar do jogo do mesmo dia.
 
 ## O site
 

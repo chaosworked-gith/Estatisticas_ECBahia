@@ -220,6 +220,8 @@
   .rodape { background: var(--azul-escuro); color: var(--azul-claro); font-size: 0.9375rem; }
   .rodape__dentro { max-width: var(--largura); margin: 0 auto; padding: 20px 16px; }
   .rodape p { margin: 0 0 8px; }
+  .rodape a { color: #fff; font-weight: 600; }
+  .rodape :focus-visible { outline-color: #fff; }
   .rodape__grito { color: #fff; font-size: 1.25rem; font-weight: 700; }
   .rodape p:last-child { margin-bottom: 0; }
 
@@ -292,6 +294,7 @@
     <p>Os horários são de Salvador. A conta só usa jogos encerrados.</p>
     <p>Aproveitamento: 3 pontos por vitória e 1 por empate. Disputa de pênaltis conta como empate.</p>
     <p>Fonte dos jogos recentes: API-Football.</p>
+    <p>Fonte dos dados históricos, de 1931 a 2025: <a href="https://www.futebol80.com.br/links/times/bahia/bahiajg.htm">Futebol 80</a>.</p>
   </div>
 </footer>
 
@@ -494,7 +497,8 @@ function criarMarca(jogo, resultado) {
   if (resultado) {
     return el('span', { class: 'marca' }, el('span', { class: `ponto fundo--${resultado}` }), RESULTADOS[resultado]);
   }
-  return null;
+  // Encerrado sem placar: W.O. no histórico. Fica na lista, mas fora da conta.
+  return jogo.situacao === 'encerrado' ? el('span', { class: 'aviso aviso--cancelado' }, 'Sem placar') : null;
 }
 
 function textoDoHorario(jogo) {

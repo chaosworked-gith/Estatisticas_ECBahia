@@ -3,6 +3,7 @@
 // Robô que atualiza os jogos do Bahia a partir da API-Football.
 // Uso: API_FOOTBALL_KEY=sua_chave node scripts/atualizar.js
 // Para consultar outra temporada: TEMPORADA=2024 (padrão: ano atual em Salvador).
+// Com SO_PERTO_DO_JOGO=true, só gasta consulta se houver jogo do Bahia por perto.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,6 +13,11 @@ const FUSO = 'America/Bahia';
 const FONTE = 'api-football';
 const PASTA_DADOS = path.resolve(__dirname, '..', 'dados');
 const TEMPO_LIMITE_MS = 30000;
+
+// O que conta como "jogo por perto", em minutos a partir do horário marcado.
+const MINUTOS_ANTES_DO_JOGO = 30;
+const MINUTOS_DEPOIS_DO_INICIO = 180;
+const MINUTOS_MAXIMOS_AO_VIVO = 300;
 
 // Códigos de situação da API para o nosso formato. Código fora da lista gera aviso.
 const SITUACOES = {
@@ -234,10 +240,40 @@ function ordenarJogos(a, b) {
   );
 }
 
-// Junta pelo id_api. Jogos sem id_api (histórico) e jogos que não vieram na resposta ficam intactos.
+function adversarioDoJogo(jogo) {
+  return jogo.mandante === 'Bahia' ? jogo.visitante : jogo.mandante;
+}
+
+// Sem a sigla do estado que o Futebol 80 usa: "Palmeiras-SP" compara com "Palmeiras".
+function nomeParaComparar(nome) {
+  return normalizar(nome).replace(/-[a-z]{2,3}$/, '');
+}
+
+// Procura o mesmo jogo em outra fonte. O Bahia quase sempre joga uma vez por dia, então a data
+// basta. Só quando há mais de um jogo no dia é que o adversário decide.
+function acharMesmoJogo(lista, jogo) {
+  const doDia = lista.filter((outro) => outro.data === jogo.data);
+  if (doDia.length <= 1) return doDia[0];
+  const adversario = nomeParaComparar(adversarioDoJogo(jogo));
+  return doDia.find((outro) => nomeParaComparar(adversarioDoJogo(outro)) === adversario);
+}
+
+function temJogoPorPerto(jogos, instante) {
+  const deslocamento = formatarInstante(instante).slice(-6);
+  return jogos.some((jogo) => {
+    if (!jogo.hora || !['agendado', 'ao_vivo'].includes(jogo.situacao)) return false;
+    const inicio = new Date(`${jogo.data}T${jogo.hora}:00${deslocamento}`);
+    const minutos = (instante - inicio) / 60000;
+    const limite = jogo.situacao === 'ao_vivo' ? MINUTOS_MAXIMOS_AO_VIVO : MINUTOS_DEPOIS_DO_INICIO;
+    return minutos >= -MINUTOS_ANTES_DO_JOGO && minutos <= limite;
+  });
+}
+
+// Junta pelo id_api. Jogos sem id_api (histórico) e jogos que não vieram na resposta ficam intactos,
+// a não ser que a API traga o mesmo jogo do histórico: nesse caso, a versão da API fica no lugar.
 function juntarJogos(existentes, novos) {
   const pendentes = new Map(novos.map((jogo) => [jogo.id_api, jogo]));
-  const resumo = { novos: 0, alterados: 0, remarcados: [], semMudanca: 0, ausentes: 0 };
+  const resumo = { novos: 0, alterados: 0, remarcados: [], semMudanca: 0, ausentes: 0, substituidos: 0 };
 
   const jogos = existentes.map((antigo) => {
     if (antigo.id_api == null) return antigo;
@@ -262,8 +298,14 @@ function juntarJogos(existentes, novos) {
   });
 
   for (const novo of pendentes.values()) {
-    jogos.push(novo);
-    resumo.novos += 1;
+    const copia = acharMesmoJogo(jogos.filter((jogo) => jogo.id_api == null), novo);
+    if (copia) {
+      jogos[jogos.indexOf(copia)] = novo;
+      resumo.substituidos += 1;
+    } else {
+      jogos.push(novo);
+      resumo.novos += 1;
+    }
   }
 
   return { jogos: jogos.sort(ordenarJogos), resumo };
@@ -409,6 +451,11 @@ function obterTemporada(instante) {
 async function executar({ pastaDados = PASTA_DADOS, chave = process.env.API_FOOTBALL_KEY, instante = new Date() } = {}) {
   const chaveLimpa = chave?.trim();
   if (!chaveLimpa) {
+    // Execução agendada sem chave: o projeto ainda não foi configurado. Não vale dar erro a cada hora.
+    if (process.env.GITHUB_EVENT_NAME === 'schedule') {
+      console.log('Aviso: a chave ainda não está nos Secrets. Nenhuma consulta foi feita.');
+      return { jogosMudaram: false, indiceMudou: false };
+    }
     throw new ErroRobo('A variável de ambiente API_FOOTBALL_KEY não foi definida. Sem ela, o robô não consulta a API.');
   }
   // Evita que um caractere inválido faça a chave aparecer em uma mensagem de erro.
@@ -419,6 +466,17 @@ async function executar({ pastaDados = PASTA_DADOS, chave = process.env.API_FOOT
   const temporada = obterTemporada(instante);
   const atualizadoEm = formatarInstante(instante);
   console.log(`Temporada: ${temporada}.`);
+
+  const arquivo = path.join(pastaDados, 'jogos', `${temporada}.json`);
+  const existente = lerJson(arquivo, null);
+  if (existente !== null && !Array.isArray(existente.jogos)) {
+    throw new ErroRobo(`O arquivo ${temporada}.json não tem a lista de jogos. Nada foi gravado.`);
+  }
+
+  if (process.env.SO_PERTO_DO_JOGO === 'true' && !temJogoPorPerto(existente?.jogos ?? [], instante)) {
+    console.log('Sem jogo do Bahia por perto. Nenhuma consulta foi feita.');
+    return { temporada, jogosMudaram: false, indiceMudou: false };
+  }
 
   const idBahia = await obterIdBahia(pastaDados, chaveLimpa, temporada);
   const itens = await consultarApi(
@@ -432,16 +490,11 @@ async function executar({ pastaDados = PASTA_DADOS, chave = process.env.API_FOOT
   const { jogos: novos, avisos } = converterJogos(itens, idBahia, atualizadoEm);
   avisos.forEach((aviso) => console.log(`Aviso: ${aviso}`));
 
-  const arquivo = path.join(pastaDados, 'jogos', `${temporada}.json`);
-  const existente = lerJson(arquivo, null);
-  if (existente !== null && !Array.isArray(existente.jogos)) {
-    throw new ErroRobo(`O arquivo ${temporada}.json não tem a lista de jogos. Nada foi gravado.`);
-  }
-
   const { jogos, resumo } = juntarJogos(existente?.jogos ?? [], novos);
   console.log(
     `Novos: ${resumo.novos}. Alterados: ${resumo.alterados}. Remarcados: ${resumo.remarcados.length}. ` +
-      `Sem mudança: ${resumo.semMudanca}. Não vieram na resposta e foram mantidos: ${resumo.ausentes}.`,
+      `Sem mudança: ${resumo.semMudanca}. Não vieram na resposta e foram mantidos: ${resumo.ausentes}. ` +
+      `Trocados pela versão da API: ${resumo.substituidos}.`,
   );
   for (const { antes, depois } of resumo.remarcados) {
     console.log(
@@ -468,4 +521,19 @@ if (require.main === module) {
   });
 }
 
-module.exports = { ErroRobo, converterJogos, executar, formatarInstante, juntarJogos, traduzirFase };
+module.exports = {
+  ErroRobo,
+  PASTA_DADOS,
+  acharMesmoJogo,
+  atualizarIndice,
+  converterJogos,
+  executar,
+  formatarInstante,
+  gravarSeMudou,
+  jogoMudou,
+  juntarJogos,
+  lerJson,
+  normalizar,
+  temJogoPorPerto,
+  traduzirFase,
+};

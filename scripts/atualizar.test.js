@@ -10,10 +10,12 @@ const path = require('node:path');
 
 const {
   ErroRobo,
+  acharMesmoJogo,
   converterJogos,
   executar,
   formatarInstante,
   juntarJogos,
+  temJogoPorPerto,
   traduzirFase,
 } = require('./atualizar.js');
 
@@ -548,6 +550,179 @@ test('robô: TEMPORADA escolhe outro ano e recusa valor inválido', async (t) =>
 
   process.env.TEMPORADA = 'abc';
   await assert.rejects(executarEm(pasta), /A temporada "abc" não é válida/);
+});
+
+test('junção: jogo do histórico no mesmo dia é trocado pela versão da API, sem duplicar', () => {
+  const historico = { ...jogoHistorico(), data: '2026-04-12', visitante: 'Palmeiras-SP' };
+  const [daApi] = converterJogos([jogoApi()], ID_BAHIA, CARIMBO).jogos;
+
+  const { jogos, resumo } = juntarJogos([historico], [daApi]);
+
+  assert.equal(jogos.length, 1);
+  assert.equal(jogos[0].fonte, 'api-football');
+  assert.equal(jogos[0].id_api, 1001);
+  assert.equal(resumo.substituidos, 1);
+  assert.equal(resumo.novos, 0);
+});
+
+test('mesmo jogo: com dois jogos no dia, o adversário decide, sem a sigla do estado', () => {
+  const comum = { ...jogoHistorico(), data: '2024-01-17' };
+  const amistoso = { ...comum, id: 'a', visitante: 'Blackburn Rovers-ENG' };
+  const baiano = { ...comum, id: 'b', visitante: 'Jequié-BA' };
+
+  assert.equal(acharMesmoJogo([amistoso, baiano], { data: '2024-01-17', mandante: 'Bahia', visitante: 'Jequié' }).id, 'b');
+  assert.equal(acharMesmoJogo([amistoso, baiano], { data: '2024-01-17', mandante: 'Jequié', visitante: 'Bahia' }).id, 'b');
+  assert.equal(acharMesmoJogo([amistoso, baiano], { data: '2024-01-17', mandante: 'Bahia', visitante: 'Outro' }), undefined);
+  assert.equal(acharMesmoJogo([amistoso], { data: '2024-01-17', mandante: 'Bahia', visitante: 'Outro' }).id, 'a');
+  assert.equal(acharMesmoJogo([amistoso], { data: '2024-01-18', mandante: 'Bahia', visitante: 'Outro' }), undefined);
+});
+
+function jogoMarcado(mudancas = {}) {
+  return { data: '2026-11-08', hora: '16:00', situacao: 'agendado', ...mudancas };
+}
+
+function emSalvador(horario) {
+  return new Date(`2026-11-08T${horario}:00-03:00`);
+}
+
+test('jogo por perto: de 30 minutos antes até 3 horas depois do horário marcado', () => {
+  const casos = {
+    '15:29': false,
+    '15:30': true,
+    '16:00': true,
+    '19:00': true,
+    '19:01': false,
+  };
+  for (const [horario, esperado] of Object.entries(casos)) {
+    assert.equal(temJogoPorPerto([jogoMarcado()], emSalvador(horario)), esperado, horario);
+  }
+});
+
+test('jogo por perto: ao vivo vale por até 5 horas, para jogo que atrasou', () => {
+  const aoVivo = jogoMarcado({ situacao: 'ao_vivo' });
+  assert.equal(temJogoPorPerto([aoVivo], emSalvador('20:30')), true);
+  assert.equal(temJogoPorPerto([aoVivo], emSalvador('21:01')), false);
+});
+
+test('jogo por perto: encerrado, adiado, cancelado ou sem horário não contam', () => {
+  const agora = emSalvador('16:30');
+  for (const situacao of ['encerrado', 'adiado', 'cancelado']) {
+    assert.equal(temJogoPorPerto([jogoMarcado({ situacao })], agora), false, situacao);
+  }
+  assert.equal(temJogoPorPerto([jogoMarcado({ hora: null })], agora), false);
+  assert.equal(temJogoPorPerto([], agora), false);
+});
+
+// Passa pelo dia inteiro nos horários do workflow: minuto 17 sempre, 2, 32 e 47 só com jogo por perto.
+function consultasNoDia(situacaoNoHorario) {
+  let total = 0;
+  for (let hora = 0; hora < 24; hora += 1) {
+    for (const minuto of [2, 17, 32, 47]) {
+      const horario = `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
+      const jogos = situacaoNoHorario(horario);
+      if (minuto === 17 || temJogoPorPerto(jogos, emSalvador(horario))) total += 1;
+    }
+  }
+  return total;
+}
+
+test('consumo: 24 consultas em dia sem jogo', () => {
+  assert.equal(consultasNoDia(() => []), 24);
+});
+
+test('consumo: 35 no máximo em dia de jogo normal', () => {
+  assert.equal(consultasNoDia(() => [jogoMarcado()]), 35);
+});
+
+test('consumo: 33 quando o jogo acaba em cerca de 2 horas', () => {
+  // A execução das 18:02 consulta e vê o jogo encerrado. Depois disso, não há mais consultas extras.
+  const situacao = (horario) => [jogoMarcado({ situacao: horario > '18:02' ? 'encerrado' : horario >= '16:00' ? 'ao_vivo' : 'agendado' })];
+  assert.equal(consultasNoDia(situacao), 33);
+});
+
+test('consumo: 41 se o jogo ficar preso como ao vivo', () => {
+  assert.equal(consultasNoDia((horario) => [jogoMarcado({ situacao: horario >= '16:00' ? 'ao_vivo' : 'agendado' })]), 41);
+});
+
+test('consumo: mesmo com jogo por perto o dia inteiro, o máximo é 96', () => {
+  assert.equal(consultasNoDia((horario) => [jogoMarcado({ hora: horario })]), 96);
+});
+
+test('robô: horário extra sem jogo por perto não gasta consulta nem grava nada', async (t) => {
+  const pasta = criarPastaDados(t);
+  const registro = capturarRegistro(t);
+  const { chamadas } = simularApi(t, {});
+  t.after(() => delete process.env.SO_PERTO_DO_JOGO);
+  fs.writeFileSync(
+    path.join(pasta, 'jogos', '2026.json'),
+    JSON.stringify({ temporada: 2026, jogos: [jogoMarcado({ id: 'x', id_api: 1 })] }),
+  );
+
+  process.env.SO_PERTO_DO_JOGO = 'true';
+  const resultado = await executar({ pastaDados: pasta, chave: CHAVE, instante: emSalvador('10:02') });
+
+  assert.equal(chamadas.length, 0);
+  assert.equal(resultado.jogosMudaram, false);
+  assert.match(registro(), /Sem jogo do Bahia por perto\. Nenhuma consulta foi feita\./);
+});
+
+test('robô: horário extra com jogo por perto consulta a API', async (t) => {
+  const pasta = criarPastaDados(t);
+  capturarRegistro(t);
+  const { chamadas } = simularApi(t, {
+    '/teams': { corpo: respostaTimes() },
+    '/fixtures': { corpo: { errors: [], response: [jogoApi()] } },
+  });
+  t.after(() => delete process.env.SO_PERTO_DO_JOGO);
+  fs.writeFileSync(
+    path.join(pasta, 'jogos', '2026.json'),
+    JSON.stringify({ temporada: 2026, jogos: [jogoMarcado({ id: 'x', id_api: 1 })] }),
+  );
+
+  process.env.SO_PERTO_DO_JOGO = 'true';
+  await executar({ pastaDados: pasta, chave: CHAVE, instante: emSalvador('16:02') });
+
+  assert.ok(chamadas.some(({ endereco }) => endereco.pathname === '/fixtures'));
+});
+
+test('robô: sem o aviso de horário extra, consulta mesmo sem jogo por perto', async (t) => {
+  const pasta = criarPastaDados(t);
+  capturarRegistro(t);
+  const { chamadas } = simularApi(t, {
+    '/teams': { corpo: respostaTimes() },
+    '/fixtures': { corpo: { errors: [], response: [jogoApi()] } },
+  });
+  t.after(() => delete process.env.SO_PERTO_DO_JOGO);
+
+  process.env.SO_PERTO_DO_JOGO = 'false';
+  await executar({ pastaDados: pasta, chave: CHAVE, instante: emSalvador('10:17') });
+
+  assert.ok(chamadas.some(({ endereco }) => endereco.pathname === '/fixtures'));
+});
+
+test('robô: execução agendada sem chave avisa e termina sem erro; manual continua dando erro', async (t) => {
+  const pasta = criarPastaDados(t);
+  const registro = capturarRegistro(t);
+  const { chamadas } = simularApi(t, {});
+  t.after(() => delete process.env.GITHUB_EVENT_NAME);
+
+  process.env.GITHUB_EVENT_NAME = 'schedule';
+  await executar({ pastaDados: pasta, chave: '' });
+  assert.match(registro(), /a chave ainda não está nos Secrets/);
+  assert.equal(chamadas.length, 0);
+
+  process.env.GITHUB_EVENT_NAME = 'workflow_dispatch';
+  await assert.rejects(executar({ pastaDados: pasta, chave: '' }), /API_FOOTBALL_KEY não foi definida/);
+});
+
+test('robô: arquivo sem lista de jogos para antes de gastar consulta', async (t) => {
+  const pasta = criarPastaDados(t);
+  capturarRegistro(t);
+  const { chamadas } = simularApi(t, {});
+  fs.writeFileSync(path.join(pasta, 'jogos', '2026.json'), '{"temporada":2026}');
+
+  await assert.rejects(executarEm(pasta), /não tem a lista de jogos/);
+  assert.equal(chamadas.length, 0);
 });
 
 test('robô: TEMPORADA vazia usa o ano atual, como no agendamento do workflow', async (t) => {
