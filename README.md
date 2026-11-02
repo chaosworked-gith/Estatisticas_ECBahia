@@ -25,7 +25,8 @@ O site não tem servidor nem banco de dados. Os jogos ficam em arquivos JSON nes
 ├── scripts/
 │   ├── atualizar.js       Robô de atualização
 │   └── atualizar.test.js  Testes do robô
-├── index.html             O site (será criado em etapa futura)
+├── .nojekyll              Faz o GitHub Pages publicar os arquivos como estão
+├── index.html             O site
 └── README.md
 ```
 
@@ -150,3 +151,17 @@ O arquivo `.github/workflows/atualizar.yml` roda o robô no GitHub Actions:
 Se o robô falhar, a execução aparece com erro na aba **Actions**, com a explicação no passo **Rodar o robô**.
 
 O agendamento do GitHub não é exato. Ele pode atrasar e, em horários de muito movimento, pular uma execução. Em repositórios públicos, o GitHub também desliga o agendamento depois de 60 dias sem atividade no repositório.
+
+## O site
+
+O `index.html` é um arquivo único. Ele lê `dados/indice.json` e o arquivo da temporada escolhida, e calcula os números no navegador. Só a fonte vem de fora, do Google Fonts. Sem ela, o site usa uma fonte do próprio aparelho.
+
+Como a conta é feita:
+
+- **Aproveitamento:** 3 pontos por vitória e 1 por empate, só com jogos encerrados.
+- **Pênaltis:** a disputa aparece no jogo, mas o resultado conta como empate.
+- **Jogo ao vivo:** aparece nas listas e só entra na conta depois de encerrado.
+
+Para abrir direto uma temporada, acrescente `?temporada=2025` ao endereço.
+
+Para ver o site no computador, é preciso um servidor local. Abrindo o arquivo direto, o navegador bloqueia a leitura dos JSON e o site mostra uma mensagem de erro.

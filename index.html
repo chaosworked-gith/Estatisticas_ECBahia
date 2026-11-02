@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estatísticas do Bahia</title>
+<meta name="description" content="Jogos, resultados e números do Esporte Clube Bahia, temporada por temporada.">
+<meta name="theme-color" content="#0A3D8F">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A3D8F'/%3E%3Crect y='13' width='32' height='6' fill='%23fff'/%3E%3Crect y='19' width='32' height='6' fill='%23D8102B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --azul: #0A3D8F;
+    --azul-escuro: #072A63;
+    --azul-claro: #D6E4FA;
+    --vermelho: #D8102B;
+    --fundo: #F3F6FB;
+    --linha: #DCE4F0;
+    --texto: #10213F;
+    --texto-2: #4A5A75;
+    --vitoria: #0B7A4B;
+    --empate: #667594;
+    --derrota: #C8102E;
+    --vivo-fundo: #FDE8EB;
+    --vivo-texto: #A50E26;
+    --adiado-fundo: #FFF3DC;
+    --adiado-texto: #7A4A00;
+    --cancelado-fundo: #E9EDF3;
+    --cancelado-texto: #4A5A75;
+    --largura: 1080px;
+    --raio: 12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--texto);
+    font-family: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+  }
+
+  :focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
+
+  /* Cabeçalho */
+  .topo { background: var(--azul); color: #fff; }
+  .topo :focus-visible { outline-color: #fff; }
+
+  .topo__dentro {
+    display: grid;
+    gap: 14px;
+    max-width: var(--largura);
+    margin: 0 auto;
+    padding: 20px 16px 18px;
+  }
+
+  .topo__clube, .topo__atualizado { margin: 0; color: var(--azul-claro); font-size: 0.9375rem; }
+  .topo__clube { font-weight: 600; }
+  .topo__atualizado { margin-top: 6px; }
+
+  h1 { margin: 0; font-size: clamp(1.875rem, 8vw, 2.75rem); font-weight: 700; line-height: 1.1; }
+
+  .topo__faixa { height: 10px; background: linear-gradient(#fff 0 40%, var(--vermelho) 40% 100%); }
+
+  .seletor { display: grid; gap: 4px; }
+  .seletor[hidden] { display: none; }
+  .seletor label { color: var(--azul-claro); font-size: 0.9375rem; font-weight: 600; }
+  .seletor select {
+    min-width: 10rem;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--azul-escuro);
+    font: inherit;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  /* Estrutura */
+  main {
+    display: grid;
+    gap: 16px;
+    max-width: var(--largura);
+    margin: 0 auto;
+    padding: 16px;
+    transition: opacity 0.15s;
+  }
+  main > *, .colunas > * { min-width: 0; }
+  main.carregando { opacity: 0.55; }
+
+  .colunas { display: grid; gap: 16px; }
+
+  .cartao { background: #fff; border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px 12px; }
+  .cartao h2 { margin: 0 0 12px; color: var(--azul-escuro); font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+  .cartao--lista { padding: 16px 0 4px; }
+  .cartao--lista > h2, .cartao--lista > .mensagem { margin-inline: 12px; }
+
+  .mensagem { margin-block: 0 12px; color: var(--texto-2); }
+  .botao {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--azul);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Resumo */
+  .resumo { display: grid; gap: 16px; }
+  .resumo__numeros { display: grid; gap: 6px; align-content: start; }
+
+  .heroi__numero { margin: 0; color: var(--azul-escuro); font-size: clamp(3.25rem, 15vw, 4.5rem); font-weight: 700; line-height: 1; }
+  .heroi__rotulo { margin: 4px 0 0; font-weight: 600; }
+  .heroi__detalhe { margin: 0; color: var(--texto-2); font-size: 0.9375rem; }
+
+  .barra { display: flex; gap: 2px; height: 12px; margin-top: 12px; }
+  .barra__parte { flex-basis: 0; min-width: 4px; }
+  .barra__parte:first-child { border-radius: 4px 0 0 4px; }
+  .barra__parte:last-child { border-radius: 0 4px 4px 0; }
+  .barra__parte:only-child { border-radius: 4px; }
+
+  .numeros { display: grid; gap: 6px; margin: 0; }
+  .numeros--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .numeros--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .numero { min-width: 0; padding: 10px 6px; border-radius: 8px; background: var(--fundo); }
+  .numero dt { color: var(--texto-2); font-size: 0.875rem; line-height: 1.2; }
+  .numero dd { display: flex; align-items: center; gap: 5px; margin: 3px 0 0; font-size: 1.625rem; font-weight: 700; line-height: 1.1; }
+
+  .ponto { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+  .fundo--vitoria { background: var(--vitoria); }
+  .fundo--empate { background: var(--empate); }
+  .fundo--derrota { background: var(--derrota); }
+
+  /* Jogos */
+  .jogos { margin: 0; padding: 0; list-style: none; }
+
+  .jogo { display: grid; gap: 6px; padding: 12px; border-top: 1px solid var(--linha); }
+
+  .jogo__topo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px 10px;
+    color: var(--texto-2);
+    font-size: 0.9375rem;
+  }
+
+  .jogo__confronto {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    font-size: 1.0625rem;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .time--casa { text-align: right; }
+  .time--bahia { color: var(--azul-escuro); font-weight: 700; }
+
+  .placar {
+    min-width: 3.75rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--fundo);
+    color: var(--texto);
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .placar--vitoria, .placar--empate, .placar--derrota { color: #fff; }
+  .placar--vitoria { background: var(--vitoria); }
+  .placar--empate { background: var(--empate); }
+  .placar--derrota { background: var(--derrota); }
+  .placar--vivo { background: var(--vivo-fundo); color: var(--vivo-texto); }
+
+  .jogo__penaltis { margin: 0; color: var(--texto-2); font-size: 0.9375rem; text-align: center; }
+  .jogo__local { color: var(--texto-2); font-size: 0.9375rem; line-height: 1.3; }
+  .jogo__local p { margin: 0; }
+
+  .marca { display: inline-flex; align-items: center; gap: 5px; color: var(--texto); font-weight: 600; white-space: nowrap; }
+
+  .aviso { padding: 1px 8px; border-radius: 999px; font-weight: 700; }
+  .aviso--ao_vivo { display: inline-flex; align-items: center; gap: 6px; background: var(--vivo-fundo); color: var(--vivo-texto); }
+  .aviso--adiado { background: var(--adiado-fundo); color: var(--adiado-texto); }
+  .aviso--cancelado { background: var(--cancelado-fundo); color: var(--cancelado-texto); }
+
+  .aviso__luz { width: 8px; height: 8px; border-radius: 50%; background: var(--vivo-texto); animation: pulso 1.4s ease-in-out infinite; }
+  @keyframes pulso { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .aviso__luz { animation: none; } main { transition: none; } }
+
+  .mes__titulo { margin: 16px 12px 6px; color: var(--texto-2); font-size: 0.9375rem; font-weight: 700; }
+
+  /* Tabela por competição */
+  .tabela { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .tabela th, .tabela td { padding: 8px 6px; font-weight: 400; text-align: right; }
+  .tabela thead th { border-bottom: 1px solid var(--linha); color: var(--texto-2); font-size: 0.9375rem; font-weight: 600; }
+  .tabela thead th:first-child { text-align: left; }
+  .tabela tbody tr + tr > * { border-top: 1px solid var(--linha); }
+  .tabela [role="rowheader"] { font-weight: 600; text-align: left; }
+  .tabela tfoot > tr > * { border-top: 2px solid var(--linha); font-weight: 700; }
+  .tabela abbr { text-decoration: none; }
+
+  .legenda { margin: 12px 0 0; color: var(--texto-2); font-size: 0.875rem; }
+
+  /* Rodapé */
+  .rodape { background: var(--azul-escuro); color: var(--azul-claro); font-size: 0.9375rem; }
+  .rodape__dentro { max-width: var(--largura); margin: 0 auto; padding: 20px 16px; }
+  .rodape p { margin: 0 0 8px; }
+  .rodape__grito { color: #fff; font-size: 1.25rem; font-weight: 700; }
+  .rodape p:last-child { margin-bottom: 0; }
+
+  /* Tabela no celular: nome em cima e números embaixo, para caber sem rolagem. */
+  @media (max-width: 719px) {
+    .tabela, .tabela thead, .tabela tbody, .tabela tfoot { display: block; }
+    .tabela tr {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.4fr);
+      padding: 6px 0;
+    }
+    .tabela tbody tr + tr > *, .tabela tfoot > tr > * { border-top: 0; }
+    .tabela tbody tr + tr, .tabela tfoot > tr { border-top: 1px solid var(--linha); }
+    .tabela tfoot > tr { border-top-width: 2px; }
+    .tabela th, .tabela td { padding: 2px 1px; text-align: center; }
+    .tabela thead th { border-bottom: 0; }
+    .tabela thead th:first-child { display: none; }
+    .tabela [role="rowheader"] { grid-column: 1 / -1; text-align: left; }
+    .tabela thead tr { border-bottom: 1px solid var(--linha); }
+  }
+
+  @media (min-width: 720px) {
+    .topo__dentro { grid-template-columns: minmax(0, 1fr) auto; align-items: end; padding: 28px 24px 24px; }
+    main { padding: 24px; gap: 20px; }
+    .colunas { gap: 20px; }
+    .cartao { padding: 20px; }
+    .cartao--lista { padding: 20px 0 4px; }
+    .cartao--lista > h2, .cartao--lista > .mensagem { margin-inline: 20px; }
+    .jogo { padding: 12px 20px; }
+    .mes__titulo { margin-inline: 20px; }
+    .numero { padding: 12px; }
+    .numero dd { font-size: 1.875rem; }
+    .rodape__dentro { padding: 24px; }
+  }
+
+  @media (min-width: 880px) {
+    .colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .colunas--uma { grid-template-columns: minmax(0, 1fr); }
+    .resumo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 28px; align-items: center; }
+
+    .jogos--larga .jogo, .colunas--uma .jogo { grid-template-columns: 8.5rem minmax(0, 1.3fr) minmax(0, 1fr); column-gap: 20px; align-items: center; }
+    .jogos--larga .jogo__topo, .colunas--uma .jogo__topo { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="topo__dentro">
+    <div>
+      <p class="topo__clube">Esporte Clube Bahia</p>
+      <h1>Estatísticas do Bahia</h1>
+      <p class="topo__atualizado" id="atualizado">Buscando os dados...</p>
+    </div>
+    <div class="seletor" id="seletor" hidden>
+      <label for="temporada">Temporada</label>
+      <select id="temporada"></select>
+    </div>
+  </div>
+  <div class="topo__faixa"></div>
+</header>
+
+<main id="conteudo" aria-live="polite">
+  <p class="mensagem">Carregando os jogos...</p>
+  <noscript><p class="mensagem">Para ver as estatísticas, ative o JavaScript no navegador.</p></noscript>
+</main>
+
+<footer class="rodape">
+  <div class="rodape__dentro">
+    <p class="rodape__grito">Bora, Bahêa!</p>
+    <p>Os horários são de Salvador. A conta só usa jogos encerrados.</p>
+    <p>Aproveitamento: 3 pontos por vitória e 1 por empate. Disputa de pênaltis conta como empate.</p>
+    <p>Fonte dos jogos recentes: API-Football.</p>
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+const NOME_BAHIA = 'Bahia';
+const FUSO = 'America/Bahia';
+const JOGOS_POR_LISTA = 5;
+
+const RESULTADOS = {
+  vitoria: 'Vitória',
+  empate: 'Empate',
+  derrota: 'Derrota',
+};
+
+const AVISOS = {
+  ao_vivo: 'Ao vivo',
+  adiado: 'Adiado',
+  cancelado: 'Cancelado',
+};
+
+const conteudo = document.getElementById('conteudo');
+const seletor = document.getElementById('seletor');
+const campoTemporada = document.getElementById('temporada');
+const atualizado = document.getElementById('atualizado');
+
+const temporadasCarregadas = new Map();
+let pedidoAtual = 0;
+
+// Monta um elemento. Os textos entram como texto puro, nunca como HTML.
+function el(tag, atributos = {}, ...filhos) {
+  const elemento = document.createElement(tag);
+  for (const [nome, valor] of Object.entries(atributos)) {
+    if (valor !== null && valor !== undefined) elemento.setAttribute(nome, valor);
+  }
+  elemento.append(...filhos.filter((filho) => filho !== null && filho !== undefined));
+  return elemento;
+}
+
+function capitalizar(texto) {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function juntarTextos(...partes) {
+  return partes.filter(Boolean).join(', ');
+}
+
+// Datas
+
+function lerData(data) {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data ?? '');
+  if (!partes) return null;
+  const [, ano, mes, dia] = partes;
+  return { ano, mes, dia, instante: new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia))) };
+}
+
+const formatoDiaSemana = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: 'UTC' });
+const formatoMes = new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' });
+
+function formatarDia(data, temporada) {
+  const partes = lerData(data);
+  if (!partes) return 'Data não informada';
+  const semana = capitalizar(formatoDiaSemana.format(partes.instante).replace('.', ''));
+  const ano = Number(partes.ano) === temporada ? '' : `/${partes.ano}`;
+  return `${semana}, ${partes.dia}/${partes.mes}${ano}`;
+}
+
+function formatarMes(data, temporada) {
+  const partes = lerData(data);
+  if (!partes) return 'Sem data';
+  const mes = capitalizar(formatoMes.format(partes.instante));
+  return Number(partes.ano) === temporada ? mes : `${mes} de ${partes.ano}`;
+}
+
+function formatarAtualizacao(texto) {
+  const instante = new Date(texto);
+  if (!texto || Number.isNaN(instante.getTime())) return 'Ainda sem atualização';
+  const dia = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, dateStyle: 'short' }).format(instante);
+  const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, timeStyle: 'short' }).format(instante);
+  return `Atualizado em ${dia}, às ${hora}`;
+}
+
+function anoAtual() {
+  return Number(new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric' }).format(new Date()));
+}
+
+function compararPorData(a, b) {
+  return `${a.data ?? ''} ${a.hora ?? ''}`.localeCompare(`${b.data ?? ''} ${b.hora ?? ''}`);
+}
+
+// Contas
+
+function golsDoBahia(jogo) {
+  const emCasa = jogo.mandante === NOME_BAHIA;
+  if (!emCasa && jogo.visitante !== NOME_BAHIA) return null;
+  if (!Number.isInteger(jogo.gols_mandante) || !Number.isInteger(jogo.gols_visitante)) return null;
+  return emCasa
+    ? { pro: jogo.gols_mandante, contra: jogo.gols_visitante }
+    : { pro: jogo.gols_visitante, contra: jogo.gols_mandante };
+}
+
+function resultadoDoJogo(jogo) {
+  if (jogo.situacao !== 'encerrado') return null;
+  const gols = golsDoBahia(jogo);
+  if (!gols) return null;
+  if (gols.pro > gols.contra) return 'vitoria';
+  return gols.pro < gols.contra ? 'derrota' : 'empate';
+}
+
+function calcularNumeros(jogos) {
+  const numeros = { jogos: 0, vitoria: 0, empate: 0, derrota: 0, golsPro: 0, golsContra: 0 };
+  for (const jogo of jogos) {
+    const resultado = resultadoDoJogo(jogo);
+    if (!resultado) continue;
+    const gols = golsDoBahia(jogo);
+    numeros.jogos += 1;
+    numeros[resultado] += 1;
+    numeros.golsPro += gols.pro;
+    numeros.golsContra += gols.contra;
+  }
+  numeros.saldo = numeros.golsPro - numeros.golsContra;
+  numeros.pontos = numeros.vitoria * 3 + numeros.empate;
+  numeros.pontosPossiveis = numeros.jogos * 3;
+  numeros.aproveitamento = numeros.jogos > 0 ? (numeros.pontos / numeros.pontosPossiveis) * 100 : 0;
+  return numeros;
+}
+
+function formatarSaldo(saldo) {
+  return new Intl.NumberFormat('pt-BR', { signDisplay: 'exceptZero' }).format(saldo);
+}
+
+function formatarAproveitamento(valor) {
+  return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(valor)}%`;
+}
+
+// Resumo
+
+function criarNumero(rotulo, valor, resultado) {
+  const ponto = resultado ? el('span', { class: `ponto fundo--${resultado}` }) : null;
+  return el('div', { class: 'numero' }, el('dt', {}, rotulo), el('dd', {}, ponto, valor));
+}
+
+function criarBarra(numeros) {
+  const descricao = `${numeros.vitoria} vitórias, ${numeros.empate} empates e ${numeros.derrota} derrotas`;
+  const barra = el('div', { class: 'barra', role: 'img', 'aria-label': descricao, title: descricao });
+  for (const resultado of Object.keys(RESULTADOS)) {
+    if (numeros[resultado] === 0) continue;
+    const parte = el('div', { class: `barra__parte fundo--${resultado}` });
+    parte.style.flexGrow = numeros[resultado];
+    barra.append(parte);
+  }
+  return barra;
+}
+
+function criarResumo(temporada, numeros) {
+  const heroi = numeros.jogos > 0
+    ? el('div', {},
+        el('p', { class: 'heroi__numero' }, formatarAproveitamento(numeros.aproveitamento)),
+        el('p', { class: 'heroi__rotulo' }, 'de aproveitamento'),
+        el('p', { class: 'heroi__detalhe' }, `${numeros.pontos} de ${numeros.pontosPossiveis} pontos`),
+        criarBarra(numeros))
+    : el('div', {}, el('p', { class: 'heroi__rotulo' }, 'A bola ainda não rolou nesta temporada.'));
+
+  return el('section', { class: 'cartao', 'aria-labelledby': 'titulo-resumo' },
+    el('h2', { id: 'titulo-resumo' }, `Resumo de ${temporada}`),
+    el('div', { class: 'resumo' },
+      heroi,
+      el('div', { class: 'resumo__numeros' },
+        el('dl', { class: 'numeros numeros--4' },
+          criarNumero('Jogos', numeros.jogos),
+          criarNumero('Vitórias', numeros.vitoria, 'vitoria'),
+          criarNumero('Empates', numeros.empate, 'empate'),
+          criarNumero('Derrotas', numeros.derrota, 'derrota')),
+        el('dl', { class: 'numeros numeros--3' },
+          criarNumero('Gols pró', numeros.golsPro),
+          criarNumero('Gols contra', numeros.golsContra),
+          criarNumero('Saldo', formatarSaldo(numeros.saldo))))));
+}
+
+// Linhas de jogo
+
+function criarTime(nome, classe) {
+  const bahia = nome === NOME_BAHIA ? ' time--bahia' : '';
+  return el('span', { class: `time ${classe}${bahia}` }, nome ?? 'A definir');
+}
+
+function criarPlacar(jogo, resultado) {
+  const temGols = Number.isInteger(jogo.gols_mandante) && Number.isInteger(jogo.gols_visitante);
+  const texto = temGols ? `${jogo.gols_mandante} x ${jogo.gols_visitante}` : 'x';
+  const estilo = resultado ? ` placar--${resultado}` : jogo.situacao === 'ao_vivo' ? ' placar--vivo' : '';
+  return el('span', { class: `placar${estilo}` }, texto);
+}
+
+function criarMarca(jogo, resultado) {
+  if (AVISOS[jogo.situacao]) {
+    const luz = jogo.situacao === 'ao_vivo' ? el('span', { class: 'aviso__luz' }) : null;
+    return el('span', { class: `aviso aviso--${jogo.situacao}` }, luz, AVISOS[jogo.situacao]);
+  }
+  if (resultado) {
+    return el('span', { class: 'marca' }, el('span', { class: `ponto fundo--${resultado}` }), RESULTADOS[resultado]);
+  }
+  return null;
+}
+
+function textoDoHorario(jogo) {
+  if (jogo.hora) return jogo.hora;
+  return jogo.situacao === 'agendado' ? 'Horário a definir' : null;
+}
+
+function criarJogo(jogo, temporada) {
+  const resultado = resultadoDoJogo(jogo);
+  const penaltis = jogo.penaltis
+    ? el('p', { class: 'jogo__penaltis' }, `Nos pênaltis: ${jogo.penaltis.mandante} x ${jogo.penaltis.visitante}`)
+    : null;
+  const competicao = juntarTextos(jogo.competicao, jogo.fase);
+  const local = juntarTextos(jogo.estadio, jogo.cidade);
+
+  return el('li', { class: 'jogo' },
+    el('div', { class: 'jogo__topo' },
+      el('span', {}, juntarTextos(formatarDia(jogo.data, temporada), textoDoHorario(jogo))),
+      criarMarca(jogo, resultado)),
+    el('div', { class: 'jogo__meio' },
+      el('div', { class: 'jogo__confronto' },
+        criarTime(jogo.mandante, 'time--casa'),
+        criarPlacar(jogo, resultado),
+        criarTime(jogo.visitante, 'time--fora')),
+      penaltis),
+    el('div', { class: 'jogo__local' },
+      competicao ? el('p', {}, competicao) : null,
+      local ? el('p', {}, local) : null));
+}
+
+function criarListaDeJogos(jogos, temporada, classe = '') {
+  return el('ul', { class: `jogos ${classe}`.trim() }, ...jogos.map((jogo) => criarJogo(jogo, temporada)));
+}
+
+function criarSecaoDeJogos(id, titulo, jogos, temporada, mensagemVazia) {
+  return el('section', { class: 'cartao cartao--lista', 'aria-labelledby': id },
+    el('h2', { id }, titulo),
+    jogos.length > 0
+      ? criarListaDeJogos(jogos, temporada)
+      : el('p', { class: 'mensagem' }, mensagemVazia));
+}
+
+function criarProximosEUltimos(jogos, temporada) {
+  const ordemAoVivo = (jogo) => (jogo.situacao === 'ao_vivo' ? 0 : 1);
+  const proximos = jogos
+    .filter((jogo) => ['agendado', 'ao_vivo', 'adiado'].includes(jogo.situacao))
+    .sort((a, b) => ordemAoVivo(a) - ordemAoVivo(b) || compararPorData(a, b))
+    .slice(0, JOGOS_POR_LISTA);
+  const ultimos = jogos
+    .filter((jogo) => ['encerrado', 'cancelado'].includes(jogo.situacao))
+    .sort((a, b) => compararPorData(b, a))
+    .slice(0, JOGOS_POR_LISTA);
+
+  // Temporada que já passou não precisa de um espaço vazio para próximos jogos.
+  const mostrarProximos = proximos.length > 0 || temporada >= anoAtual();
+  const secoes = [
+    mostrarProximos
+      ? criarSecaoDeJogos('titulo-proximos', 'Próximos jogos', proximos, temporada, 'Nenhum jogo marcado por enquanto.')
+      : null,
+    criarSecaoDeJogos('titulo-ultimos', 'Últimos resultados', ultimos, temporada, 'A bola ainda não rolou nesta temporada.'),
+  ];
+  return el('div', { class: mostrarProximos ? 'colunas' : 'colunas colunas--uma' }, ...secoes);
+}
+
+// Tabela por competição
+
+const COLUNAS = [
+  ['J', 'Jogos', (n) => n.jogos],
+  ['V', 'Vitórias', (n) => n.vitoria],
+  ['E', 'Empates', (n) => n.empate],
+  ['D', 'Derrotas', (n) => n.derrota],
+  ['GP', 'Gols pró', (n) => n.golsPro],
+  ['GC', 'Gols contra', (n) => n.golsContra],
+  ['SG', 'Saldo de gols', (n) => formatarSaldo(n.saldo)],
+  ['%', 'Aproveitamento', (n) => formatarAproveitamento(n.aproveitamento)],
+];
+
+function criarLinhaDaTabela(nome, numeros) {
+  return el('tr', { role: 'row' },
+    el('th', { role: 'rowheader', scope: 'row' }, nome),
+    ...COLUNAS.map(([, , valor]) => el('td', { role: 'cell' }, valor(numeros))));
+}
+
+function criarCompeticoes(jogos) {
+  const porCompeticao = new Map();
+  for (const jogo of jogos) {
+    const nome = jogo.competicao || 'Competição não informada';
+    if (!porCompeticao.has(nome)) porCompeticao.set(nome, []);
+    porCompeticao.get(nome).push(jogo);
+  }
+
+  const linhas = [...porCompeticao]
+    .map(([nome, jogosDaCompeticao]) => ({ nome, numeros: calcularNumeros(jogosDaCompeticao) }))
+    .filter(({ numeros }) => numeros.jogos > 0)
+    .sort((a, b) => b.numeros.jogos - a.numeros.jogos || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  const secao = el('section', { class: 'cartao', 'aria-labelledby': 'titulo-competicoes' },
+    el('h2', { id: 'titulo-competicoes' }, 'Por competição'));
+
+  if (linhas.length === 0) {
+    secao.append(el('p', { class: 'mensagem' }, 'A tabela aparece depois do primeiro jogo encerrado.'));
+    return secao;
+  }
+
+  secao.append(
+    el('table', { class: 'tabela', role: 'table' },
+      el('thead', { role: 'rowgroup' },
+        el('tr', { role: 'row' },
+          el('th', { role: 'columnheader', scope: 'col' }, 'Competição'),
+          ...COLUNAS.map(([sigla, nome]) =>
+            el('th', { role: 'columnheader', scope: 'col' }, el('abbr', { title: nome }, sigla))))),
+      el('tbody', { role: 'rowgroup' }, ...linhas.map(({ nome, numeros }) => criarLinhaDaTabela(nome, numeros))),
+      linhas.length > 1
+        ? el('tfoot', { role: 'rowgroup' }, criarLinhaDaTabela('Total', calcularNumeros(jogos)))
+        : null),
+    el('p', { class: 'legenda' },
+      'J: jogos. V: vitórias. E: empates. D: derrotas. GP: gols pró. GC: gols contra. SG: saldo. %: aproveitamento.'));
+  return secao;
+}
+
+// Todos os jogos
+
+function criarTodosOsJogos(jogos, temporada) {
+  const secao = el('section', { class: 'cartao cartao--lista', 'aria-labelledby': 'titulo-todos' },
+    el('h2', { id: 'titulo-todos' }, `Todos os jogos (${jogos.length})`));
+
+  if (jogos.length === 0) {
+    secao.append(el('p', { class: 'mensagem' }, 'Nenhum jogo nesta temporada.'));
+    return secao;
+  }
+
+  const porMes = new Map();
+  for (const jogo of jogos) {
+    const mes = formatarMes(jogo.data, temporada);
+    if (!porMes.has(mes)) porMes.set(mes, []);
+    porMes.get(mes).push(jogo);
+  }
+  for (const [mes, jogosDoMes] of porMes) {
+    secao.append(
+      el('h3', { class: 'mes__titulo' }, mes),
+      criarListaDeJogos(jogosDoMes, temporada, 'jogos--larga'));
+  }
+  return secao;
+}
+
+// Telas
+
+function desenharTemporada(temporada, jogos) {
+  const ordenados = [...jogos].sort(compararPorData);
+  document.title = `Temporada ${temporada} | Estatísticas do Bahia`;
+  conteudo.replaceChildren(
+    criarResumo(temporada, calcularNumeros(ordenados)),
+    criarProximosEUltimos(ordenados, temporada),
+    criarCompeticoes(ordenados),
+    criarTodosOsJogos(ordenados, temporada));
+}
+
+function desenharAviso(texto) {
+  conteudo.replaceChildren(el('section', { class: 'cartao' }, el('p', { class: 'mensagem' }, texto)));
+}
+
+function desenharErro(texto, tentarDeNovo) {
+  const botao = el('button', { class: 'botao', type: 'button' }, 'Tentar de novo');
+  botao.addEventListener('click', tentarDeNovo);
+  conteudo.replaceChildren(el('section', { class: 'cartao' }, el('p', { class: 'mensagem' }, texto), botao));
+}
+
+// Carregamento
+
+async function buscarJson(caminho) {
+  // "no-cache" confere se há versão nova, para o torcedor não ver dado antigo.
+  const resposta = await fetch(caminho, { cache: 'no-cache' });
+  if (!resposta.ok) throw new Error(`${caminho}: ${resposta.status}`);
+  return resposta.json();
+}
+
+async function buscarTemporada(temporada) {
+  if (temporadasCarregadas.has(temporada)) return temporadasCarregadas.get(temporada);
+  const dados = await buscarJson(`dados/jogos/${temporada}.json`);
+  if (!Array.isArray(dados.jogos)) throw new Error(`${temporada}: lista de jogos ausente`);
+  temporadasCarregadas.set(temporada, dados.jogos);
+  return dados.jogos;
+}
+
+async function mostrarTemporada(temporada) {
+  // Se a pessoa trocar de temporada no meio do caminho, só a última escolha aparece.
+  const pedido = ++pedidoAtual;
+  conteudo.classList.add('carregando');
+  try {
+    const jogos = await buscarTemporada(temporada);
+    if (pedido === pedidoAtual) desenharTemporada(temporada, jogos);
+  } catch (erro) {
+    console.error(erro);
+    if (pedido === pedidoAtual) {
+      desenharErro(`Não deu para carregar a temporada ${temporada}. Tente de novo em instantes.`, () => mostrarTemporada(temporada));
+    }
+  } finally {
+    if (pedido === pedidoAtual) conteudo.classList.remove('carregando');
+  }
+}
+
+function escolherTemporadaInicial(temporadas) {
+  const pedida = Number(new URLSearchParams(location.search).get('temporada'));
+  return temporadas.includes(pedida) ? pedida : temporadas[0];
+}
+
+async function iniciar() {
+  let indice;
+  try {
+    indice = await buscarJson('dados/indice.json');
+  } catch (erro) {
+    console.error(erro);
+    atualizado.textContent = 'Sem conexão com os dados';
+    desenharErro('Não deu para carregar os jogos agora. Tente de novo em instantes.', iniciar);
+    return;
+  }
+
+  atualizado.textContent = formatarAtualizacao(indice.ultima_atualizacao);
+
+  const temporadas = Array.isArray(indice.temporadas) ? indice.temporadas : [];
+  if (temporadas.length === 0) {
+    desenharAviso('Os jogos ainda não chegaram. Assim que o robô rodar, os números aparecem aqui.');
+    return;
+  }
+
+  campoTemporada.replaceChildren(...temporadas.map((ano) => el('option', { value: ano }, ano)));
+  const inicial = escolherTemporadaInicial(temporadas);
+  campoTemporada.value = inicial;
+  seletor.hidden = false;
+  await mostrarTemporada(inicial);
+}
+
+campoTemporada.addEventListener('change', () => {
+  const temporada = Number(campoTemporada.value);
+  const endereco = new URL(location.href);
+  endereco.searchParams.set('temporada', temporada);
+  history.replaceState(null, '', endereco);
+  mostrarTemporada(temporada);
+});
+
+iniciar();
+</script>
+</body>
+</html>
